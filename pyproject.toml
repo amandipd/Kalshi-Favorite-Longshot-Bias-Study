@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "favorite-longshot-bias"
+version = "0.1.0"
+description = "Calibration study of the favorite-longshot bias in Kalshi & Polymarket prediction markets"
+requires-python = ">=3.11,<3.12"
+readme = "README.md"
+dependencies = [
+    "httpx",
+    "tenacity",
+    "pandas",
+    "pyarrow",
+    "pydantic>=2",
+    "pydantic-settings",
+    "scipy",
+    "statsmodels",
+    "matplotlib",
+    "seaborn",
+    "pytest",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,0 +1,25 @@
+# See docs/adr for the research decisions each key encodes.
+# No magic numbers should live in code; every threshold belongs here.
+
+# Chosen from docs/journal.md (2026-08-05): the window where Economics and
+# Sports both show real, simultaneous settlement volume (top-20-by-volume
+# series per category, sub-daily recurring series excluded). Politics stays
+# thin across every window tried -- see the journal entry's caveat before
+# treating it as a fully-covered category.
+date_range:
+  start: "2025-12-01"
+  end: "2026-06-06"  # Kalshi's live/historical cutoff at query time (GET /historical/cutoff)
+
+categories:
+  - Politics
+  - Economics
+  - Sports
+  - Crypto
+
+# Confirmed against docs.kalshi.com/getting_started/api_environments.
+kalshi_base_url: "https://external-api.kalshi.com/trade-api/v2"
+
+# Kalshi's unauthenticated "Basic" tier read bucket refills at 200
+# tokens/sec; default request cost is 10 tokens => ~20 req/sec ceiling.
+# Set below that ceiling for headroom. See docs.kalshi.com/getting_started/rate_limits.
+rate_limit_per_second: 15

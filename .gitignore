@@ -1,1 +1,6 @@
 PROPOSAL.MD
+data/
+.venv/
+.claude/
+__pycache__/
+date_range_exploration.json

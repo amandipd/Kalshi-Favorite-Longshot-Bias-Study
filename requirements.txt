@@ -1,0 +1,11 @@
+httpx
+tenacity
+pandas
+pyarrow
+pydantic>=2
+pydantic-settings
+scipy
+statsmodels
+matplotlib
+seaborn
+pytest
