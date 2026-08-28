@@ -67,6 +67,26 @@ class RetryConfig(BaseModel):
         return self
 
 
+class IngestConfig(BaseModel):
+    """Scope and on-disk layout for an ingestion run.
+
+    Attributes:
+        raw_dir: Root of the immutable raw layer, relative to the repo root.
+            Venue clients write under `<raw_dir>/<venue>/`.
+        top_n_series_per_category: How many of a category's highest-volume
+            series to walk. Kalshi's historical endpoint is queried per series,
+            so this is what bounds the size of the sample.
+        page_limit: Markets requested per page (Kalshi's maximum is 200).
+        subdaily_frequencies: Values of a series' `frequency` field that mark it
+            as recurring more often than daily, and therefore excluded.
+    """
+
+    raw_dir: str
+    top_n_series_per_category: int = Field(ge=1)
+    page_limit: int = Field(ge=1, le=200)
+    subdaily_frequencies: frozenset[str] = frozenset()
+
+
 class Config(BaseModel):
     """The whole of config.yaml, validated."""
 
@@ -76,6 +96,7 @@ class Config(BaseModel):
     polymarket_base_url: str
     rate_limit_per_second: float = Field(gt=0)
     retry: RetryConfig
+    ingest: IngestConfig
 
 
 def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:

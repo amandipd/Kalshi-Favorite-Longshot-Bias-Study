@@ -43,3 +43,28 @@ retry:
   max_backoff_seconds: 60.0
   jitter_seconds: 1.0
   timeout_seconds: 30.0
+
+# Ingestion scope and layout (src/ingest/kalshi.py).
+ingest:
+  raw_dir: "data/raw"
+
+  # /historical/markets is queried per series, so a category is ingested by
+  # walking its highest-volume series. 20 mirrors the exploration that chose
+  # date_range above (docs/journal.md, 2026-08-05), so reports/figures/
+  # date_range_exploration.png describes the same slice we actually ingest.
+  # A handful of series carry most of a category's volume; the long tail is
+  # near-zero-volume markets where price reflects noise, not a market view.
+  top_n_series_per_category: 20
+
+  # Markets per page. 200 is Kalshi's max, so this minimises round trips.
+  page_limit: 200
+
+  # Sub-daily recurring series (a Bitcoin price settling every 15 minutes)
+  # settle so often they dwarf every other series' counts, and a 15-minute
+  # price bet is not the same object as an election or a CPI print.
+  # `frequency` is a server-side enum: custom, one_off, annual, monthly,
+  # weekly, daily, hourly, fifteen_min. Match on it -- never on the ticker
+  # string, which false-positives on Sports "1H" (First Half) markets.
+  subdaily_frequencies:
+    - hourly
+    - fifteen_min

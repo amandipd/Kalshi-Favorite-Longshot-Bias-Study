@@ -8,6 +8,8 @@ sleeps are stubbed and recorded instead).
 
 from __future__ import annotations
 
+import time
+
 import httpx
 import pytest
 
@@ -259,16 +261,25 @@ def test_paginate_is_lazy():
 # -- pacing ----------------------------------------------------------------
 
 
+# The clock this test measures against is coarse: Windows schedules timer
+# interrupts about every 15.6ms, so a `time.sleep(d)` can return up to one tick
+# early. The interval under test therefore has to be several ticks long, and the
+# assertion has to leave a tick of slack -- otherwise the test fails on timer
+# granularity rather than on the limiter actually bursting.
+_TIMER_SLOP_SECONDS = 0.016
+
+
 def test_rate_limiter_spaces_calls():
     """Calls are smoothed to >= 1/rate apart rather than bursting."""
+    rate = 20.0  # 0.05s apart -- ~3 timer ticks, so slop cannot swallow the gap
+    expected_gap = 1.0 / rate
+    limiter = _RateLimiter(rate_per_second=rate)
+
     times: list[float] = []
-    limiter = _RateLimiter(rate_per_second=50.0)
-
-    import time
-
     for _ in range(4):
         limiter.acquire()
         times.append(time.monotonic())
 
     gaps = [b - a for a, b in zip(times, times[1:])]
-    assert all(gap >= 0.015 for gap in gaps), gaps  # 1/50 = 0.02s, minus timer slop
+    floor = expected_gap - _TIMER_SLOP_SECONDS
+    assert all(gap >= floor for gap in gaps), gaps

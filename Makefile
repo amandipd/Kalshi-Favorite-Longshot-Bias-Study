@@ -4,7 +4,7 @@ install:
 	# TODO
 
 ingest:
-	# TODO
+	python -m src.ingest.kalshi
 
 clean:
 	# TODO
