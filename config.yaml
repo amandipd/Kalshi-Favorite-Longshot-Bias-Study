@@ -23,3 +23,23 @@ kalshi_base_url: "https://external-api.kalshi.com/trade-api/v2"
 # tokens/sec; default request cost is 10 tokens => ~20 req/sec ceiling.
 # Set below that ceiling for headroom. See docs.kalshi.com/getting_started/rate_limits.
 rate_limit_per_second: 15
+
+# Polymarket's public read API. Ingesting Polymarket is the optional/stretch
+# second venue; the URL lives here so src/ingest/polymarket.py never hardcodes it.
+polymarket_base_url: "https://gamma-api.polymarket.com"
+
+# Retry policy for every venue client (src/ingest/base.py).
+# Applies to 429s, 5xx responses, and transport-level errors.
+#
+# max_attempts counts the FIRST try, so 5 = one attempt plus four retries.
+# Backoff is exponential (initial * 2^n) capped at max_backoff_seconds, with up
+# to jitter_seconds of uniform random noise added. Jitter matters because a
+# rate-limited run retries many in-flight requests at once; without noise they
+# all wake on the same schedule and re-collide (the thundering-herd problem).
+# A server-supplied Retry-After header always wins over this computed backoff.
+retry:
+  max_attempts: 5
+  initial_backoff_seconds: 1.0
+  max_backoff_seconds: 60.0
+  jitter_seconds: 1.0
+  timeout_seconds: 30.0

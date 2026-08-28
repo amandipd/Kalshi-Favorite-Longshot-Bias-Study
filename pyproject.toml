@@ -15,6 +15,7 @@ dependencies = [
     "pyarrow",
     "pydantic>=2",
     "pydantic-settings",
+    "pyyaml",
     "scipy",
     "statsmodels",
     "matplotlib",
