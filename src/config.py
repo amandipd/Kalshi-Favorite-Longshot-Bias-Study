@@ -25,7 +25,13 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
 
 
 class DateRange(BaseModel):
-    """Inclusive window of settlement dates the study covers."""
+    """Inclusive window the study covers, applied to each market's `close_time`.
+
+    Close rather than settlement: close is the anchor the horizon price is
+    measured against (ADR 003), so it is the timestamp that says when the
+    forecast was made. Settlement can lag it by an arbitrary settlement timer.
+    Both bounds are inclusive whole days in UTC (ADR 004, decision 2).
+    """
 
     start: date
     end: date
@@ -67,6 +73,43 @@ class RetryConfig(BaseModel):
         return self
 
 
+class TradesConfig(BaseModel):
+    """The second ingestion pass: a price per market at a horizon before close.
+
+    The settled-market snapshot cannot supply an implied probability -- 92.5%
+    of its last prices are pinned to the settlement value, because the market
+    had stopped being uncertain. See docs/adr/003-implied-price-definition.md.
+    This pass fetches the last trade at or before `close_time - horizon`.
+
+    Attributes:
+        trades_dir: Root for this pass, kept separate from the market pages so
+            the two are independently re-runnable.
+        horizons_hours: Hours before close to price at. Each is a separate,
+            independently resumable run; the first is the study's primary
+            horizon and the rest are sensitivity analyses.
+        request_limit: Trades per request. 1 is all that is needed -- the
+            endpoint returns newest-first, so the first row *is* the last
+            trade at or before the cutoff.
+    """
+
+    trades_dir: str
+    horizons_hours: list[float] = Field(min_length=1)
+    request_limit: int = Field(default=1, ge=1, le=1000)
+
+    @model_validator(mode="after")
+    def horizons_positive_and_unique(self) -> "TradesConfig":
+        if any(h <= 0 for h in self.horizons_hours):
+            raise ValueError(f"horizons_hours must all be > 0, got {self.horizons_hours}")
+        if len(set(self.horizons_hours)) != len(self.horizons_hours):
+            raise ValueError(f"horizons_hours must be unique, got {self.horizons_hours}")
+        return self
+
+    @property
+    def primary_horizon_hours(self) -> float:
+        """The horizon the headline result is computed at -- the first listed."""
+        return self.horizons_hours[0]
+
+
 class IngestConfig(BaseModel):
     """Scope and on-disk layout for an ingestion run.
 
@@ -79,12 +122,34 @@ class IngestConfig(BaseModel):
         page_limit: Markets requested per page (Kalshi's maximum is 200).
         subdaily_frequencies: Values of a series' `frequency` field that mark it
             as recurring more often than daily, and therefore excluded.
+        trades: Settings for the horizon-price pass.
     """
 
     raw_dir: str
     top_n_series_per_category: int = Field(ge=1)
     page_limit: int = Field(ge=1, le=200)
     subdaily_frequencies: frozenset[str] = frozenset()
+    trades: TradesConfig
+
+
+class CleanConfig(BaseModel):
+    """How raw JSON becomes the analysis-ready table.
+
+    Attributes:
+        price_method: Which quoted number is read as P(event). Only
+            `horizon_trade` is defensible for this study; the others exist so
+            the writeup can *show* the curve they produce rather than assert
+            they are wrong. See docs/adr/003-implied-price-definition.md.
+        price_horizon_hours: Which ingested horizon to price at. Must be one
+            of ingest.trades.horizons_hours.
+        interim_path: Parsed, typed, one row per contract.
+        processed_path: Filtered and normalised; what the analysis reads.
+    """
+
+    price_method: str
+    price_horizon_hours: float = Field(gt=0)
+    interim_path: str
+    processed_path: str
 
 
 class Config(BaseModel):
@@ -97,6 +162,21 @@ class Config(BaseModel):
     rate_limit_per_second: float = Field(gt=0)
     retry: RetryConfig
     ingest: IngestConfig
+    clean: CleanConfig
+
+    @model_validator(mode="after")
+    def price_horizon_was_ingested(self) -> "Config":
+        """Fail at startup, not after a parse, if the study prices at a horizon
+        nothing ever fetched."""
+        horizons = self.ingest.trades.horizons_hours
+        if self.clean.price_method == "horizon_trade" and (
+            self.clean.price_horizon_hours not in horizons
+        ):
+            raise ValueError(
+                f"clean.price_horizon_hours ({self.clean.price_horizon_hours}) is not in "
+                f"ingest.trades.horizons_hours ({horizons}) -- that horizon was never ingested"
+            )
+        return self
 
 
 def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:

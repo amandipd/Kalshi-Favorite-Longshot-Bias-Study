@@ -25,6 +25,12 @@ class Contract(BaseModel):
     Fields:
         venue: Exchange the contract traded on (kalshi or polymarket).
         ticker: Venue-native identifier for the market (e.g. Kalshi's market ticker).
+        event_ticker: Identifier of the event the market belongs to. Contracts
+            sharing one are not independent observations -- a 250-golfer field
+            is one underlying outcome expressed as 250 contracts, and a
+            threshold ladder is monotonically bound by construction. Carried on
+            every row so Phase 3 can cluster standard errors on it; see
+            docs/adr/004-inclusion-criteria.md, decision 6.
         category: Normalized topic taxonomy (e.g. politics, economics, sports) --
             not the venue's raw category string, which varies across venues.
         title: Human-readable market question, as quoted by the venue.
@@ -49,6 +55,7 @@ class Contract(BaseModel):
 
     venue: Venue
     ticker: str
+    event_ticker: str
     category: str
     title: str
     implied_price: float = Field(ge=0.0, le=1.0)

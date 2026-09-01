@@ -15,7 +15,14 @@ from datetime import date
 import httpx
 import pytest
 
-from src.config import Config, DateRange, IngestConfig, RetryConfig
+from src.config import (
+    CleanConfig,
+    Config,
+    DateRange,
+    IngestConfig,
+    RetryConfig,
+    TradesConfig,
+)
 from src.ingest.kalshi import KalshiClient, _volume
 
 FAST_RETRY = RetryConfig(
@@ -40,6 +47,16 @@ def make_config(tmp_path, top_n: int = 2, page_limit: int = 2) -> Config:
             top_n_series_per_category=top_n,
             page_limit=page_limit,
             subdaily_frequencies=frozenset({"hourly", "fifteen_min"}),
+            trades=TradesConfig(
+                trades_dir=str(tmp_path / "trades"),
+                horizons_hours=[1.0],
+            ),
+        ),
+        clean=CleanConfig(
+            price_method="horizon_trade",
+            price_horizon_hours=1.0,
+            interim_path=str(tmp_path / "interim.parquet"),
+            processed_path=str(tmp_path / "processed.parquet"),
         ),
     )
 

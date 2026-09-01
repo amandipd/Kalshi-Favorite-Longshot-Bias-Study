@@ -68,3 +68,54 @@ ingest:
   subdaily_frequencies:
     - hourly
     - fifteen_min
+
+  # Second ingestion pass: the price the market was actually forecasting at.
+  #
+  # The settled snapshot's last_price is unusable -- 92.5% of binary markets
+  # have it pinned to the settlement value, because the market had already
+  # stopped being uncertain (median market lifetime is only ~24h, and the last
+  # trade *before close* is 90% pinned too). Full measurements and the horizon
+  # sweep are in docs/adr/003-implied-price-definition.md.
+  trades:
+    trades_dir: "data/raw_trades"
+
+    # Hours before close_time to read the last trade at. The FIRST entry is the
+    # study's primary horizon; the rest are sensitivity runs.
+    #
+    # 1h maximises usable yield -- retention x (1 - pinned):
+    #     T-0h   99.6% retained, 90.0% pinned ->  10.0%
+    #     T-1h   89.2% retained, 17.5% pinned ->  73.6%   <- primary
+    #     T-6h   74.8% retained,  4.8% pinned ->  71.2%
+    #     T-24h  30.8% retained,  7.8% pinned ->  28.4%
+    #     T-72h   6.8% retained, 29.4% pinned ->   4.8%
+    # Sample too late and the price is just the answer; sample too early and
+    # the market did not exist yet, leaving a sample selected on longevity.
+    # Each horizon is independently resumable, so adding one re-fetches nothing.
+    horizons_hours:
+      - 1
+      - 6
+      - 24
+
+    # /historical/trades returns newest-first, so one row is enough: it *is*
+    # the last trade at or before the cutoff.
+    request_limit: 1
+
+# raw -> interim -> processed (src/clean.py).
+clean:
+  # How the market's implied probability is read off the data.
+  #
+  #   horizon_trade  the last trade at or before close - price_horizon_hours.
+  #                  The only defensible choice here; see ADR 003.
+  #   last_trade     the settled snapshot's last_price. 92.5% pinned to the
+  #                  settlement value -- kept so the writeup can SHOW the
+  #                  degenerate curve it produces, not because it is usable.
+  #   bid_ask_mid    unavailable: 54.9% of settled books are 0/1 wide.
+  #   close_price    previous_price_dollars; identical to last_trade on 96.5%
+  #                  of records, so it inherits the same defect.
+  price_method: "horizon_trade"
+
+  # Must be one of ingest.trades.horizons_hours -- validated at load time.
+  price_horizon_hours: 1
+
+  interim_path: "data/interim/contracts.parquet"
+  processed_path: "data/processed/contracts.parquet"
