@@ -28,7 +28,7 @@ from src.analysis.calibration import (
     calibration_table,
     logistic_calibration,
 )
-from src.config import AnalysisConfig, Config
+from src.config import AnalysisConfig, Config, StrategyConfig
 
 pytest.importorskip("pyarrow")
 
@@ -82,6 +82,17 @@ def make_config(**overrides) -> Config:
             processed_path="processed.parquet",
         ),
         analysis=AnalysisConfig(**settings),
+        # The analysis tests never trade, but Config validates whole.
+        strategy=StrategyConfig(
+            train_fraction=0.6,
+            fee_coefficient=0.07,
+            fee_ceiling_per_contract=False,
+            min_net_edge=0.0,
+            kelly_fraction=0.5,
+            max_position_fraction=0.02,
+            max_daily_deployment=1.0,
+            slippage_per_contract=0.0,
+        ),
     )
 
 

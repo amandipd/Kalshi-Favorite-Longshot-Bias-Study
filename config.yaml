@@ -170,3 +170,78 @@ analysis:
   # four events spends alpha on a question the data cannot answer, and makes
   # every other test in the family pay for it.
   min_events_per_bucket: 30
+
+# Backtest (src/strategy/). See docs/adr/006-train-test-split.md and
+# docs/adr/007-strategy-and-sizing.md.
+strategy:
+  # Fraction of CONTRACTS (not calendar days) that fall in the estimation
+  # period. Volume ramps 3.5x across the window -- 7,561 contracts closed in
+  # December against 26,850 in May -- so splitting the calendar in half would
+  # leave the training set with a quarter of the data. Splitting on contract
+  # count uses only close dates and counts, never prices or outcomes, so it
+  # cannot leak the label.
+  train_fraction: 0.6
+
+  # Kalshi's taker fee, verified against the CFTC rule filing and two
+  # independent 2026 sources:
+  #
+  #     fee = ceil(0.07 * C * P * (1 - P))     no settlement or exercise fee
+  #
+  # Taker, not maker (which is a quarter of this), because the strategy crosses
+  # the spread: we hold no order book in the historical data, so a resting
+  # order's fill cannot be modelled and assuming one would be assuming the
+  # hard part away.
+  #
+  # The parabola peaks at P=0.50 -- 1.75c -- which is where it does the most
+  # damage, and the study's largest edge sits at 0.34, where it costs 1.58c
+  # against a 2.98c gross bias.
+  fee_coefficient: 0.07
+
+  # The filed formula puts C INSIDE the ceiling -- ceil(0.07*C*P*(1-P)) -- so
+  # the round-up is per order and is worth under a cent per contract at any
+  # realistic size. false charges the exact rate and lets that sub-cent
+  # remainder go.
+  #
+  # true charges the ceiling PER CONTRACT, a much more expensive claim: at
+  # P=0.03 the true rate is 0.21c and the ceiling is 1c, a 4.7x overcharge that
+  # wrongly rules the longshot bucket untradeable. Kept as a pessimistic bound
+  # to report alongside, not as the base case.
+  fee_ceiling_per_contract: false
+
+  # Positions are held to settlement, so the fee is paid ONCE on entry. There
+  # is no exit trade to pay for and Kalshi charges nothing at settlement.
+
+  # Trade a bucket only if its in-sample edge survives the fee by this much.
+  # Zero means "any positive net edge"; the fee itself is the real filter.
+  min_net_edge: 0.0
+
+  # Fraction of full Kelly. Full Kelly maximises long-run growth only when the
+  # edge is known exactly; ours is estimated, and overestimating it overbets
+  # superlinearly. Half-Kelly keeps about three quarters of the growth for
+  # roughly half the volatility, which is the standard practitioner trade.
+  kelly_fraction: 0.5
+
+  # Hard cap on any single position as a fraction of bankroll, applied after
+  # Kelly. Guards the case where an estimated edge on a near-0 or near-1 price
+  # produces an absurd Kelly number from a small denominator.
+  max_position_fraction: 0.02
+
+  # Adverse price paid per contract on entry, in dollars, on top of the fee.
+  #
+  # The backtest fills at the last traded price. A real taker crosses the
+  # spread, so the true entry is worse by roughly half the bid-ask. We CANNOT
+  # measure that: settled snapshots carry no usable book (54.9% quote 0/1, ADR
+  # 003), so there is no spread to read. Default 0.0 means the headline result
+  # is a NO-SPREAD upper bound, and `breakeven_slippage` reports how little
+  # adverse fill it takes to erase the edge. That number, not the ROI, is the
+  # honest summary of tradeability.
+  slippage_per_contract: 0.0
+
+  # Portfolio budget: the most that may be deployed on any one settlement day,
+  # as a multiple of bankroll. This is NOT a refinement -- without it the
+  # backtest is incoherent. Kelly sizes each bet as if it were the only one, and
+  # this strategy holds ~570 positions on a typical day, so the per-position cap
+  # alone asks for roughly 11x the bankroll daily. 1.0 means fully invested and
+  # never levered; a day whose desired positions exceed it is scaled down
+  # proportionally, preserving the relative Kelly weights within the day.
+  max_daily_deployment: 1.0

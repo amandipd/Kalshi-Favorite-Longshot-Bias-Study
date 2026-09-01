@@ -185,6 +185,36 @@ class AnalysisConfig(BaseModel):
     min_events_per_bucket: int = Field(ge=1)
 
 
+class StrategyConfig(BaseModel):
+    """The trading rule, its sizing, and what a trade costs.
+
+    Attributes:
+        train_fraction: Share of contracts in the estimation period.
+        fee_coefficient: Kalshi's taker fee coefficient in
+            fee = ceil(k * C * P * (1 - P)).
+        fee_ceiling_per_contract: Round the fee up per contract (expensive
+            reading) rather than per order.
+        min_net_edge: Minimum fee-adjusted in-sample edge to trade a bucket.
+        kelly_fraction: Multiplier on full Kelly.
+        max_position_fraction: Cap on one position as a share of bankroll.
+        slippage_per_contract: Adverse fill cost per contract, on top of
+            the fee. 0.0 makes the result a no-spread upper bound.
+        max_daily_deployment: Cap on total capital deployed on one
+            settlement day, as a multiple of bankroll. Kelly sizes each
+            bet in isolation; this is the portfolio constraint that
+            stops hundreds of concurrent positions summing past 100%.
+    """
+
+    train_fraction: float = Field(gt=0.0, lt=1.0)
+    fee_coefficient: float = Field(ge=0.0)
+    fee_ceiling_per_contract: bool
+    min_net_edge: float = Field(ge=0.0)
+    kelly_fraction: float = Field(gt=0.0, le=1.0)
+    max_position_fraction: float = Field(gt=0.0, le=1.0)
+    max_daily_deployment: float = Field(gt=0.0)
+    slippage_per_contract: float = Field(ge=0.0)
+
+
 class Config(BaseModel):
     """The whole of config.yaml, validated."""
 
@@ -197,6 +227,7 @@ class Config(BaseModel):
     ingest: IngestConfig
     clean: CleanConfig
     analysis: AnalysisConfig
+    strategy: StrategyConfig
 
     @model_validator(mode="after")
     def price_horizon_was_ingested(self) -> "Config":

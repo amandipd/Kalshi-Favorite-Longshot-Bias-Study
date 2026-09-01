@@ -23,6 +23,7 @@ from src.config import (
     DateRange,
     IngestConfig,
     RetryConfig,
+    StrategyConfig,
     TradesConfig,
 )
 from src.ingest.trades import (
@@ -55,6 +56,18 @@ ANALYSIS = AnalysisConfig(
     min_events_per_bucket=30,
 )
 
+STRATEGY = StrategyConfig(
+    train_fraction=0.6,
+    fee_coefficient=0.07,
+    fee_ceiling_per_contract=False,
+    min_net_edge=0.0,
+    kelly_fraction=0.5,
+    max_position_fraction=0.02,
+    max_daily_deployment=1.0,
+    slippage_per_contract=0.0,
+)
+
+
 
 def make_config(tmp_path, horizons=(1.0,)) -> Config:
     return Config(
@@ -75,6 +88,7 @@ def make_config(tmp_path, horizons=(1.0,)) -> Config:
             ),
         ),
         analysis=ANALYSIS,
+        strategy=STRATEGY,
         clean=CleanConfig(
             price_method="horizon_trade",
             # Must match an ingested horizon -- Config validates the pair.

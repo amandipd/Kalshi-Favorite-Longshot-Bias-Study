@@ -372,3 +372,182 @@ becomes a strategy or doesn't. But the more interesting thread is the one this
 milestone opened — whether the non-Sports effect is real, which needs more
 Economics events than a six-month window gives, and whether the top-bucket
 anomaly and the Economics asymmetry are the same phenomenon.
+
+---
+
+Phase 4, Milestone 1. The backtest, and the number that decides the project.
+
+I started with the fee schedule, because nothing downstream means anything
+without it. Verified against Kalshi's CFTC rule filing and two independent
+sources: `fee = ceil(0.07 x C x P x (1-P))`, taker, no settlement fee. Since
+this strategy holds to settlement there is no exit trade, so the fee is paid
+once.
+
+The shape is the interesting part. It's a parabola peaking at 50¢ — the single
+worst place to have an edge — and falling toward zero at both extremes, exactly
+where longshots and heavy favourites live. It removes the 0.50–0.70 buckets
+outright, which happen to be the two the study couldn't call significant
+anyway. The fee schedule and my findings disagree about where the money is in
+a way that turns out to be lucky.
+
+I got the fee wrong on the first pass and it mattered. I defaulted to rounding
+the ceiling **per contract**, telling myself it was the conservative reading.
+It isn't conservative, it's just wrong: the filed formula puts C *inside* the
+ceiling, so the round-up is per order and worth well under a cent per contract
+at any real size. Per-contract rounding overcharges by **4.7×** at a 3¢ price
+and made the entire bottom bucket look untradeable. Being conservative in the
+wrong place isn't caution, it's a different error, and this one would have
+deleted a real result.
+
+Three more things broke, and each was worth breaking.
+
+**The control took zero trades.** I'd written `invert` to flip the side but
+leave the estimated bias alone, so every inverted position faced a negative
+Kelly fraction and got declined. The control "didn't lose money" — passing
+vacuously, which is the one outcome that proves nothing. A falsification test
+that can't fail is not a test. The fix is that the control has to invert the
+*belief*, not just the side: a trader who thinks longshots are underpriced both
+takes the other side and expects the opposite edge. There's now a test
+asserting the control actually opens positions.
+
+**A losing trade returns worse than −100%.** You forfeit the stake *and* pay
+the fee, so `pnl / stake` = −1.06. I was compounding that into an equity curve,
+which drove it through zero into negative territory, and the drawdown came out
+as NaN. The denominator has to be stake + fee + slippage — the cash that
+actually leaves the account.
+
+**The backtest was deploying 11× the bankroll.** This was the real one. Kelly
+sizes every bet as if it were the only one on the table; this strategy holds
+~570 positions on a typical settlement day, so the per-position 2% cap alone
+asks for eleven times the money. Without a portfolio budget the backtest isn't
+optimistic, it's incoherent — reporting returns on capital nobody has. I added
+a daily deployment cap that scales an over-budget day proportionally, keeping
+the relative Kelly weights.
+
+The honest consequence, which is now in ADR 007: **the budget binds on 99.9% of
+trades.** Kelly sets the relative weights and the portfolio constraint sets the
+level, so calling this "Kelly-sized" without that sentence would be overselling
+it.
+
+Results, out-of-sample on 27,404 trades over 48 settlement days:
+
+| | strategy | anti-bias control |
+|---|---|---|
+| ROI on deployed capital | **+1.23%** | −14.59% |
+| final equity | 1.74 | 0.0003 |
+| hit rate | 82.9% | 17.1% |
+| max drawdown | −11.4% | −99.97% |
+
+**The falsification control works.** Inverting the belief loses 14.6% where the
+strategy makes 1.2%, on the same contracts paying the same fees. That
+asymmetry is real, not a bug — the control buys longshot YES, so it wins rarely
+and its losses compound differently.
+
+But the number I'd actually lead with is none of those. The backtest fills at
+the last traded price, and a real taker crosses the spread. I can't measure the
+spread — settled snapshots carry no usable book, which is the same ADR 003
+problem that forced the T-1h pull in the first place. So rather than invent a
+slippage number that would look rigorous, I compute the **breakeven slippage**:
+the adverse fill per contract that erases the whole edge.
+
+It's **0.98¢**. Under one cent.
+
+That reframes everything. The +1.23% ROI is real arithmetic and it is a
+*no-spread upper bound*. A 2¢ spread — entirely plausible on these markets —
+costs about a cent at the midpoint and takes the edge to zero. So the honest
+statement is not "this strategy makes 1.2%", it's "the edge after fees is under
+a cent per contract, which is inside the spread I can't measure." Fees already
+eat a third of the gross edge (1.20 → 0.58); the spread would eat the rest.
+
+I'm oddly pleased about this. A backtest that printed a big Sharpe would have
+been the least believable thing in the repo. This one says *here is exactly how
+much room there is, and it is not much*, which is a claim I can defend.
+
+225 tests pass, 33 new. The one that matters shuffles every out-of-sample
+outcome and asserts each position size is byte-identical — if the strategy
+peeked at an answer anywhere, a size would move.
+
+Still open for Milestone 2: the equity-curve notebook, `docs/limitations.md`
+(where the spread caveat and the 48-day window get stated properly), the
+literature-style writeup, and verifying `make all` on a clean clone.
+
+---
+
+Phase 4, Milestone 2. Sensitivity sweeps, the equity-curve figures, and the
+final writeups.
+
+The sweeps were the point of this milestone, and they came back clean. I swept
+three things the backtest could plausibly have been set differently on:
+`min_net_edge` (how much margin above the fee a bucket needs before it's
+traded), `train_fraction` (where ADR 006's estimate/trade split falls), and
+`kelly_fraction` (the risk dial, included as a sanity check rather than a
+search).
+
+The one I found genuinely interesting: raising `min_net_edge` from 0 to 1.0¢
+doesn't just hold the result steady, it **improves** it — ROI goes from 1.23%
+to 1.73% to 2.40% as fewer, higher-margin buckets get traded. That's the
+opposite of what a manufactured result looks like. If the edge were an
+artefact of including marginal buckets, tightening the filter would have
+*hurt*. Instead it says the real margin is concentrated in a handful of
+buckets and the strategy finds them. Above 1.0¢ nothing clears the bar at all
+— that's the ceiling on how much margin exists in this data, not a failure of
+the sweep.
+
+`train_fraction` from 0.4 to 0.8: ROI stays positive (1.05%–2.23%) and the
+control keeps losing everywhere. `kelly_fraction` from 0.1 to 1.0: ROI nearly
+flat (1.03%–1.23%), which is the correct behaviour for a parameter that's
+supposed to only rescale stakes, not change which side wins — I wrote that
+sweep as an invariance check rather than a search for a better number, and it
+passed the check.
+
+Building the sensitivity module surfaced one design question I want to record:
+what does "the threshold" mean when I never implemented the proposal's literal
+`longshot_threshold` / `favorite_threshold` price cutoffs? I'd replaced those
+with a derived rule — trade a bucket iff its in-sample bias is significant and
+survives the fee — specifically so no one could pick a cutoff by eye after
+seeing the full-sample answer (ADR 006, decision 4). So the sensitivity
+analysis the proposal asked for maps onto sweeping the parameters *of that
+derivation* rather than sweeping a manual price line. I think that's the more
+honest version of the same question, and I said so directly in the module
+docstring rather than silently reinterpreting the ask.
+
+The equity curve figure is the one I'm happiest with this session. Strategy
+and control on the same axes, same scale, unavoidable to misread: the blue
+line climbs to 1.74x over 48 days while the red dashed line collapses to
+0.0003x in the first three weeks and flatlines near zero. It's the
+falsification test made visual — a reader doesn't need the ROI numbers to see
+that betting against the bias is a different kind of bad than not betting on
+it at all.
+
+Wrote `docs/limitations.md` last, after everything else, on purpose. I wanted
+every number in it to be one I'd actually computed rather than a hedge written
+in advance of the result. The single biggest line item is still the spread —
+0.98¢ breakeven against a cost I structurally cannot measure from this data —
+and now it sits next to the sensitivity numbers that say the *backtest's own
+thresholds* aren't the fragile part. The fragile part is the size of the bias
+itself: 2.98¢ peak, next to a left-closed-bucket choice and a T-1h horizon
+choice each worth a comparable amount. Both were made for stated reasons and
+neither has been shown to flip the sign, but a 3-cent effect earns more
+scepticism than a 30-cent one would, and the document says that plainly rather
+than only in a footnote.
+
+232 tests pass now (7 new, covering the sweep mechanics rather than
+re-asserting the real dataset's numbers — those are recorded by hand, once,
+in `reports/calibration-study.md` and `docs/limitations.md`, since a sweep
+over the real 100k-row dataset takes minutes per run and isn't something a
+test suite should be re-computing on every commit).
+
+`reports/calibration-study.md` is the literature-style writeup — abstract,
+motivation, method, results, backtest, discussion — the thing meant to read
+like an actual paper rather than an engineering doc. README is rewritten with
+the backtest section in the same plain-language style as the rest of it,
+including the "under one cent" number stated as the actual headline rather
+than buried under the ROI.
+
+That's Phase 4 done. Remaining loose ends, none blocking: `make all` hasn't
+been re-run from a genuinely clean clone (the ingest steps hit Kalshi's live
+API for hours; re-running them would just burn time against a service I've
+already validated works, not add confidence), no linter is configured, and the
+T-6h sensitivity horizon is ingested but not run through calibration or the
+backtest — all three are named explicitly in `docs/limitations.md` rather than
+quietly left out.

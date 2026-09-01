@@ -1,7 +1,7 @@
 .PHONY: install ingest ingest-trades ingest-summary trades-progress trades-watch clean analyze figures test all
 
 install:
-	# TODO
+	pip install -r requirements.txt
 
 # Pass 1: settled market pages -> data/raw/
 ingest:
@@ -39,6 +39,7 @@ analyze:
 # so a chart and the table under it cannot drift apart.
 figures:
 	python -m src.analysis.figures
+	python -m src.strategy.figures
 
 test:
 	python -m pytest -q

@@ -23,6 +23,10 @@ from src.analysis.calibration import (
     logistic_calibration,
 )
 from src.analysis.segmentation import bias_by_category, bias_by_lifetime
+from src.strategy.backtest import (
+    backtest_anti_bias_control,
+    backtest_bias_strategy,
+)
 from src.config import Config, get_config
 
 logger = logging.getLogger(__name__)
@@ -31,6 +35,8 @@ REPORTS_DIR = Path("reports")
 TABLE_PATH = REPORTS_DIR / "calibration_table.csv"
 CATEGORY_PATH = REPORTS_DIR / "bias_by_category.csv"
 LIFETIME_PATH = REPORTS_DIR / "bias_by_lifetime.csv"
+LEDGER_PATH = REPORTS_DIR / "backtest_ledger.csv"
+RULES_PATH = REPORTS_DIR / "backtest_rules.csv"
 
 
 def _stars(q_value: float, significant: bool) -> str:
@@ -131,6 +137,52 @@ def format_segments(table: pd.DataFrame, label: str) -> str:
     return "\n".join(lines)
 
 
+def format_backtest(
+    main: dict, control: dict, split, rules: pd.DataFrame
+) -> str:
+    """Strategy against its own falsification control, side by side.
+
+    The control is shown next to the strategy rather than in a footnote,
+    because a strategy result without its control is an assertion.
+    """
+    lines = [
+        f"Split {split.split_ts:%Y-%m-%d}: {len(split.train):,} contracts to "
+        f"estimate on, {len(split.test):,} to trade, {split.excluded} dropped "
+        "in the settle/price gap.",
+        "",
+        f"{'':>28} {'side':>5} {'gross':>8} {'fee':>8} {'net':>8}  trade",
+        "-" * 70,
+    ]
+    for row in rules.itertuples():
+        verdict = "YES" if row.trade else "no"
+        lines.append(
+            f"{row.mean_price:>28.4f} {row.side:>5} {row.gross_edge:>8.4f} "
+            f"{row.fee:>8.4f} {row.net_edge:>+8.4f}  {verdict}"
+        )
+
+    lines += ["", f"{'metric':>22} {'STRATEGY':>14} {'CONTROL':>14}", "-" * 54]
+    for key in ("trades", "roi", "hit_rate", "total_pnl", "gross_pnl",
+                "fees_paid", "final_equity", "max_drawdown", "sharpe_like",
+                "trading_days"):
+        lines.append(f"{key:>22} {main[key]:>14,.4f} {control[key]:>14,.4f}")
+
+    lines += [
+        "",
+        f"Breakeven slippage: {main['breakeven_slippage'] * 100:.2f}c per contract.",
+        "That is the adverse fill that erases the entire edge. The backtest",
+        "fills at the last traded price and no spread is modelled (settled",
+        "snapshots carry no usable book), so it is a no-spread upper bound.",
+        "Read this number before the ROI.",
+    ]
+    if control["roi"] < 0 < main["roi"]:
+        lines.append("")
+        lines.append(
+            "Falsification: the inverted strategy loses on the same contracts "
+            "and fees, as it must if the effect is real."
+        )
+    return "\n".join(lines)
+
+
 def run(config: Config | None = None) -> pd.DataFrame:
     """Compute, print, and persist the headline calibration result."""
     config = config or get_config()
@@ -187,11 +239,21 @@ def run(config: Config | None = None) -> pd.DataFrame:
     )
     print("\n" + format_segments(lifetime, "lifetime"))
 
+    ledger, main, split, rules = backtest_bias_strategy(df, config=config)
+    _, control, _, _ = backtest_anti_bias_control(df, config=config)
+    print("\n\nOut-of-sample backtest, Kalshi taker fees deducted.")
+    print(format_backtest(main, control, split, rules))
+
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    ledger.to_csv(LEDGER_PATH, index=False)
+    rules.to_csv(RULES_PATH, index=False)
     table.to_csv(TABLE_PATH, index=False)
     category.to_csv(CATEGORY_PATH, index=False)
     lifetime.to_csv(LIFETIME_PATH, index=False)
-    print(f"\nwrote {TABLE_PATH}, {CATEGORY_PATH}, {LIFETIME_PATH}")
+    print(
+        f"\nwrote {TABLE_PATH}, {CATEGORY_PATH}, {LIFETIME_PATH}, "
+        f"{RULES_PATH}, {LEDGER_PATH}"
+    )
     return table
 
 
