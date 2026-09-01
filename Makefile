@@ -1,4 +1,4 @@
-.PHONY: install ingest ingest-trades ingest-summary trades-progress trades-watch clean analyze test all
+.PHONY: install ingest ingest-trades ingest-summary trades-progress trades-watch clean analyze figures test all
 
 install:
 	# TODO
@@ -30,10 +30,17 @@ trades-watch:
 clean:
 	python -m src.clean
 
+# processed -> the headline calibration table (reports/calibration_table.csv).
+# Deterministic: same parquet + same config.yaml => same digits, seed included.
 analyze:
-	# TODO
+	python -m src.analysis.report
+
+# processed -> reports/figures/*.png, from the same functions analyze prints,
+# so a chart and the table under it cannot drift apart.
+figures:
+	python -m src.analysis.figures
 
 test:
 	python -m pytest -q
 
-all: install ingest ingest-trades clean analyze test
+all: install ingest ingest-trades clean analyze figures test

@@ -16,6 +16,7 @@ import httpx
 import pytest
 
 from src.config import (
+    AnalysisConfig,
     CleanConfig,
     Config,
     DateRange,
@@ -31,6 +32,21 @@ FAST_RETRY = RetryConfig(
     max_backoff_seconds=0.02,
     jitter_seconds=0.0,
     timeout_seconds=5.0,
+)
+
+
+# The analysis layer is not what these tests exercise, but Config validates as a
+# whole, so every fixture needs one. Few bootstrap reps: any test that reaches
+# the bootstrap here cares that it ran, not how tight its interval is.
+ANALYSIS = AnalysisConfig(
+    n_buckets=10,
+    confidence=0.95,
+    cluster_on="event_ticker",
+    bootstrap_reps=100,
+    bootstrap_seed=1,
+    fdr_alpha=0.05,
+    segment_n_buckets=5,
+    min_events_per_bucket=30,
 )
 
 
@@ -52,6 +68,7 @@ def make_config(tmp_path, top_n: int = 2, page_limit: int = 2) -> Config:
                 horizons_hours=[1.0],
             ),
         ),
+        analysis=ANALYSIS,
         clean=CleanConfig(
             price_method="horizon_trade",
             price_horizon_hours=1.0,

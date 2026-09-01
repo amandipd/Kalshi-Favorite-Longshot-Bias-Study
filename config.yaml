@@ -119,3 +119,54 @@ clean:
 
   interim_path: "data/interim/contracts.parquet"
   processed_path: "data/processed/contracts.parquet"
+
+# Calibration measurement (src/analysis/). See docs/adr/005-bucketing-and-tests.md.
+analysis:
+  # Decile buckets on implied_price. Ten is the literature's convention and
+  # keeps every bucket populated here (the thinnest holds ~6,400 contracts),
+  # so bucket width is never the binding constraint on precision -- the
+  # clustering is.
+  n_buckets: 10
+
+  confidence: 0.95
+
+  # Every interval and p-value is clustered on `event_ticker`. A 250-golfer
+  # field is ONE outcome expressed as 250 contracts, and threshold ladders are
+  # monotonically bound by construction, so contracts are nowhere near
+  # independent (mean 3.35 per event). ADR 004 decision 6: "any interval
+  # computed without this clustering is wrong and must not be reported."
+  cluster_on: "event_ticker"
+
+  # Reps for the block bootstrap that resamples whole events. 2,000 is enough
+  # for a 95% interval (the 2.5% tail is ~50 reps) without the run taking
+  # long enough to discourage re-running it.
+  bootstrap_reps: 2000
+
+  # Fixed so an identical processed table yields identical intervals forever.
+  bootstrap_seed: 20260901
+
+  # Benjamini-Hochberg false-discovery rate across the per-bucket tests.
+  # Correction handles testing MANY hypotheses; clustering handles correlated
+  # observations WITHIN one. They fix different errors and both are needed.
+  fdr_alpha: 0.05
+
+  # Segmentation (src/analysis/segmentation.py) splits the corpus by category
+  # and by market lifetime, which multiplies the number of tests and divides
+  # the events available to each.
+  #
+  # Coarser buckets for thinner slices: quintiles rather than deciles. Chosen
+  # from the SEGMENT SIZES (Sports 29,471 events, Economics 186, Politics 16),
+  # never from segment results -- edges picked after seeing which split looks
+  # significant are not edges, they are a finding manufactured by hand.
+  segment_n_buckets: 5
+
+  # (Family-wide correction is the CORRECT family, not automatically a
+  # stricter one -- BH is step-up, so strong signal in one segment can lower
+  # another's q. See src/analysis/segmentation.py.)
+  #
+  # A segment bucket below this many EVENTS is reported but never tested: it
+  # keeps its point estimate and interval, is flagged `underpowered`, and is
+  # left out of the Benjamini-Hochberg family entirely. Testing a cell with
+  # four events spends alpha on a question the data cannot answer, and makes
+  # every other test in the family pay for it.
+  min_events_per_bucket: 30

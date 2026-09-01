@@ -17,6 +17,7 @@ import httpx
 import pytest
 
 from src.config import (
+    AnalysisConfig,
     CleanConfig,
     Config,
     DateRange,
@@ -40,6 +41,21 @@ FAST_RETRY = RetryConfig(
 )
 
 
+# The analysis layer is not what these tests exercise, but Config validates as a
+# whole, so every fixture needs one. Few bootstrap reps: any test that reaches
+# the bootstrap here cares that it ran, not how tight its interval is.
+ANALYSIS = AnalysisConfig(
+    n_buckets=10,
+    confidence=0.95,
+    cluster_on="event_ticker",
+    bootstrap_reps=100,
+    bootstrap_seed=1,
+    fdr_alpha=0.05,
+    segment_n_buckets=5,
+    min_events_per_bucket=30,
+)
+
+
 def make_config(tmp_path, horizons=(1.0,)) -> Config:
     return Config(
         date_range=DateRange(start=date(2026, 1, 1), end=date(2026, 6, 6)),
@@ -58,6 +74,7 @@ def make_config(tmp_path, horizons=(1.0,)) -> Config:
                 horizons_hours=list(horizons),
             ),
         ),
+        analysis=ANALYSIS,
         clean=CleanConfig(
             price_method="horizon_trade",
             # Must match an ingested horizon -- Config validates the pair.

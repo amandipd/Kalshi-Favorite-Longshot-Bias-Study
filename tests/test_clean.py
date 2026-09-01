@@ -23,7 +23,15 @@ from src.clean import (
     load_horizon_trades,
     parse_raw_to_interim,
 )
-from src.config import CleanConfig, Config, DateRange, IngestConfig, RetryConfig, TradesConfig
+from src.config import (
+    AnalysisConfig,
+    CleanConfig,
+    Config,
+    DateRange,
+    IngestConfig,
+    RetryConfig,
+    TradesConfig,
+)
 
 RETRY = RetryConfig(
     max_attempts=3,
@@ -31,6 +39,21 @@ RETRY = RetryConfig(
     max_backoff_seconds=0.02,
     jitter_seconds=0.0,
     timeout_seconds=5.0,
+)
+
+
+# The analysis layer is not what these tests exercise, but Config validates as a
+# whole, so every fixture needs one. Few bootstrap reps: any test that reaches
+# the bootstrap here cares that it ran, not how tight its interval is.
+ANALYSIS = AnalysisConfig(
+    n_buckets=10,
+    confidence=0.95,
+    cluster_on="event_ticker",
+    bootstrap_reps=100,
+    bootstrap_seed=1,
+    fdr_alpha=0.05,
+    segment_n_buckets=5,
+    min_events_per_bucket=30,
 )
 
 
@@ -49,6 +72,7 @@ def make_config(tmp_path, method="horizon_trade", horizon=1.0) -> Config:
             subdaily_frequencies=frozenset(),
             trades=TradesConfig(trades_dir=str(tmp_path / "trades"), horizons_hours=[horizon]),
         ),
+        analysis=ANALYSIS,
         clean=CleanConfig(
             price_method=method,
             price_horizon_hours=horizon,

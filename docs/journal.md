@@ -154,3 +154,221 @@ would show the strongest retail bias.
 114 tests pass. Next: the exploration notebook, and then Phase 3's calibration
 machinery — where the clustered intervals get built, and where that Economics
 gap either survives contact with an honest confidence interval or doesn't.
+
+---
+
+Later the same day: Phase 3's first milestone, which is where the table above
+either becomes a finding or stops being one.
+
+The whole milestone is about the *interval*, not the estimate. The point
+estimates were never in doubt — bucket the prices, average the outcomes,
+subtract — and I already had them this morning. What I did not have was any
+right to call the gaps real, because ADR 004 says plainly that an interval
+computed without clustering on `event_ticker` "is wrong and must not be
+reported," and until today nothing computed one.
+
+So `src/analysis/statistics.py` is a small estimator library and the two things
+in it that matter are both about correlated siblings. The cluster-robust
+standard error sums residuals *within* an event before squaring them, which
+is the entire difference from the textbook formula: squaring each residual
+alone is what silently assumes the cross-terms vanish, and inside a golfer
+field they emphatically do not. The block bootstrap resamples whole events
+rather than contracts, for the same reason from the other direction — drawing
+contracts independently would happily produce a replicate with thirty copies
+of one golfer and none of his field, quietly rebuilding the independence the
+clustering exists to deny. And it runs **once for the whole table**, because a
+single event's contracts land in several price buckets and a replicate that
+drops that event has to drop it from all of them at once. Ten separately
+bootstrapped buckets would each be defensible and the table would be
+incoherent.
+
+The thing I got wrong on the first pass, and want to remember: I had assumed
+clustering means *wider*. It doesn't — it means *correct*. A mutually
+exclusive field is negatively correlated inside the cluster (exactly one
+winner, 249 losers), and the cluster totals then vary **less** than
+independent draws would, so the clustered SE can legitimately shrink. There's
+now a test asserting exactly that on a miniature golfer field, sitting next to
+its opposite. If I'd written the tests expecting one direction I'd have
+"fixed" the estimator until it was wrong.
+
+The Murphy decomposition needed similar honesty. `reliability − resolution +
+uncertainty = brier` holds *exactly* only when every forecast inside a bucket
+is the same number — true for a forecaster who only ever says 10%, 20%, false
+here where prices vary continuously inside each decile. The proposal asked for
+a test that the identity holds "≈", and an approximate assertion is precisely
+the kind that passes with a term subtly wrong. So `brier_decomposition` now
+returns both scores: `binned_brier`, which the identity closes on to machine
+precision and which the test asserts at 1e-12, and the real `brier` on unbinned
+prices, with their difference reported as `binning_residual`. That residual is
+a diagnostic rather than an error — it measures within-bucket price variation
+the buckets can't see. Here it's −0.00075 against a Brier of 0.1213, so 0.6%:
+deciles describe these prices well.
+
+Then the results, from `make analyze`:
+
+| bucket | n | events | price | actual | bias | 95% CI (clustered) | deff | q |
+|---|---|---|---|---|---|---|---|---|
+| 0.00–0.10 | 22,993 | 10,280 | 0.0335 | 0.0296 | −0.0040 | [0.0263, 0.0331] | 1.45 | 0.016 * |
+| 0.10–0.20 | 10,198 | 7,582 | 0.1421 | 0.1175 | −0.0246 | [0.1105, 0.1253] | 1.14 | 1.5e−10 *** |
+| 0.20–0.30 | 8,119 | 7,013 | 0.2430 | 0.2163 | −0.0268 | [0.2069, 0.2257] | 1.08 | 2.5e−07 *** |
+| 0.30–0.40 | 7,096 | 6,521 | 0.3444 | 0.3145 | −0.0298 | [0.3037, 0.3258] | 1.03 | 5.3e−07 *** |
+| 0.40–0.50 | 6,682 | 6,244 | 0.4449 | 0.4202 | −0.0247 | [0.4082, 0.4326] | 1.03 | 1.4e−04 *** |
+| 0.50–0.60 | 6,394 | 5,613 | 0.5443 | 0.5554 | +0.0111 | [0.5438, 0.5670] | 0.96 | 0.069 |
+| 0.60–0.70 | 6,766 | 6,389 | 0.6457 | 0.6543 | +0.0086 | [0.6426, 0.6659] | 1.03 | 0.147 |
+| 0.70–0.80 | 6,660 | 6,211 | 0.7461 | 0.7622 | +0.0161 | [0.7512, 0.7721] | 1.04 | 0.004 ** |
+| 0.80–0.90 | 7,568 | 6,745 | 0.8462 | 0.8622 | +0.0160 | [0.8537, 0.8706] | 1.07 | 2.6e−04 *** |
+| 0.90–1.00 | 17,734 | 10,635 | 0.9651 | 0.9566 | −0.0086 | [0.9529, 0.9602] | 1.20 | 5.7e−06 *** |
+
+Brier 0.1213 = reliability 0.00029 − resolution 0.1258 + uncertainty 0.2476.
+
+**The clustering cost what ADR 004 predicted, exactly where it predicted.**
+The design effect is ~1.03 through the middle and rises in both tails — 1.45
+in the 0–10¢ bucket, 1.20 in the 90¢–100¢ bucket — which are the two buckets
+holding the big mutually-exclusive fields. In the bottom bucket the corrected
+q moves from 5e−04 (naive) to 1.6e−02 (clustered): a thirtyfold weaker claim,
+still significant. No bucket's verdict actually flips in the pooled table, and
+I want to be careful not to read that as "the clustering didn't matter." It
+matters most in the longshot bucket the hypothesis is *about*, and the
+per-category segments have one to two orders of magnitude fewer events to
+spend, so this is the pooled table getting away with it, not the correction
+being unnecessary.
+
+Two things I didn't expect. First, **reliability is 0.00029** — three
+ten-thousandths. Decomposed, almost all of the Brier score is the base rate's
+own uncertainty (0.2476) offset by genuine discrimination (0.1258), and
+essentially none of it is miscalibration. The favorite-longshot bias here is
+real, it is significant in eight of ten buckets, and it is *small*: two to
+three points. That's a more honest headline than the shape of the curve
+suggests on its own, and it moves the interesting question to Phase 4 — a
+3-point edge is not obviously a tradeable one once fees and the bid-ask
+spread are paid.
+
+Second, the top bucket is still going the wrong way. −0.0086 where the
+favorite-longshot story predicts positive, and now with a q of 5.7e−06 rather
+than a shrug. It's no longer something I can wave off as the ceiling at 1.0,
+because the clustering had its largest effect there and it survived. Heavy
+favorites at 96.5¢ resolving yes 95.7% of the time is a *specific* claim and I
+don't have an explanation for it yet.
+
+One discrepancy worth flagging against this morning's table: bucket counts
+moved (the bottom bucket from 24,117 to 22,993) because I fixed the bin edges
+to be left-closed. Pandas' default is right-closed, which put the 1,124
+contracts priced at exactly 0.10 in the *bottom* bucket. Left-closed matches
+how the bands are spoken about — 10¢ starts the 10–20¢ band — and needs no
+special case at zero. Recorded in ADR 005 so nobody later has to wonder why
+two tables of the same data disagree.
+
+All of it is in `docs/adr/005-bucketing-and-tests.md`, including why Wilson
+intervals are computed but never reported (they're the denominator of the
+design effect and nothing else), and why BH rather than Bonferroni. `make
+analyze` regenerates the table and writes `reports/calibration_table.csv`, so
+there is exactly one place the headline numbers come from. 172 tests pass, 58
+of them new.
+
+Still open for Milestone 2: the logistic calibration (slope vs. the ideal 1),
+segmentation by category and time-to-resolution — which is where this morning's
+Economics lead gets its honest interval and where the 96%-Sports caveat either
+narrows or stays — and the figures.
+
+---
+
+Milestone 2, same day. The segmentation is where the 96%-Sports caveat stops
+being a caveat and becomes an answer, and it delivered — including one result
+that inverts what I'd been assuming for a month.
+
+Three things needed deciding before any code, and all three came from looking
+at the data rather than the proposal.
+
+**The logit is defined everywhere, which I expected to have to argue about.**
+Kalshi's tick floor is 0.001, so no price sits at exactly 0 or 1 and the
+logistic regression needs no clipping, winsorising, or dropping. I'd budgeted
+an ADR paragraph for a judgment call that turned out not to exist. It still
+raises on a boundary price rather than clipping silently, because if one ever
+appears, how to handle it is a research decision and not a numerical
+convenience.
+
+**Category sizes are brutal once you count events instead of contracts.**
+Sports has 29,471 events. Economics has 2,743 contracts but **186 events**.
+Politics has 265 contracts and **16 events**. Clustered inference is governed
+by events, so Economics has roughly a fifteenth of the sample its contract
+count advertises. That's what the power floor is for: a bucket under 30 events
+keeps its estimate and interval but is never tested and never enters the
+correction family. Politics comes back untestable in every single cell, which
+is the honest answer rather than a gap to paper over.
+
+**"Time to resolution" doesn't exist in this dataset.** The proposal asks for
+`bias_by_time_to_resolution`. But ADR 003 prices every market at exactly one
+hour before close, so time-from-forecast-to-outcome is ~1 hour for all 100,210
+rows *by construction*. A function with that name would be measuring settlement
+lag while claiming to measure forecast horizon. What actually varies is market
+**lifetime** — how long it traded before I priced it — median 25h, quartiles
+15.6 / 25.0 / 45.1, tail past two years. That supports the question the
+proposal was reaching for, and it turned out to be the most interesting split
+in the study.
+
+The mistake I made and had to back out: I wrote a test asserting that pooling
+segments into one Benjamini-Hochberg family always produces q-values at least
+as large as correcting each segment alone — "more tests, higher bar." It
+failed, and it was the test that was wrong, not the code. **BH is a step-up
+procedure**, so a segment full of strong signal lifts the other tests' ranks
+faster than it lifts m, and a marginal test can emerge with a *smaller* q
+pooled than alone. I checked it directly: five p-values at 1e-8 pull a
+neighbouring 0.02 from q=0.10 down to q=0.033. The FDR guarantee is about the
+share of false discoveries across the family, not about any individual q moving
+one way. I'd written the module docstring and a config comment both asserting
+the wrong version, so those got corrected too. Worth remembering that I'd have
+happily shipped that sentence in the writeup.
+
+Results.
+
+**The bucket-free check agrees with the bucketed one.** Slope 1.0442, 95% CI
+[1.0229, 1.0656], p=5.0e-05 against the ideal of 1; intercept −0.0542. Slope
+above 1 means true probabilities are more extreme than prices — longshots
+overpriced, favorites underpriced. That's the favorite-longshot direction, and
+it means the shape in the decile table isn't an artefact of where I put the bin
+edges. I derived the direction from the fitted equation rather than trusting
+memory, because it's the mirror image of the "slope < 1 means overconfident"
+convention from the forecast-evaluation literature, which regresses the other
+way round. Two tests now plant slope 1.3 and 0.7 so the convention can't
+silently invert on me later.
+
+**Miscalibration concentrates almost entirely in short-lived markets.** The
+shortest quartile (under 15.6h) is significantly miscalibrated in four of five
+price bands, including a −5.5 cent bias at 20–40¢, the largest anywhere in the
+pooled data. The two middle quartiles are essentially indistinguishable from
+calibrated. That's consistent with an information-aggregation story — less time
+open, less opportunity to incorporate what people know — but lifetime is
+confounded with contract type, since a 15-hour market is overwhelmingly a
+same-day game.
+
+**And the Economics lead survived.** This is the one that inverts my prior. Its
+20–40¢ band is priced at 28.8¢ and resolves yes 15.1% of the time — a
+**13.7-point** gap, five times anything in the pooled table, and it survives
+clustering *and* a family-wide correction on 85 events. Crypto shows the same
+thing (−15.2 at 20–40¢) plus a large positive bias at 60–80¢. Sports, the 96%
+that drives every pooled number, has the *weakest* effect of any testable
+category: −2.7 cents at its worst.
+
+So the assumption I'd carried since the proposal — that Sports, being the
+retail-money category, would show the strongest bias — is backwards. The pooled
+table isn't a measurement of prediction markets that happens to be mostly
+sports; it's a measurement of sports that *dilutes* a much larger effect
+elsewhere.
+
+One caution I want on the record, because it would be easy to get excited here:
+Economics is negative in four of five bands, including above 50¢. That is not
+the favorite-longshot shape, which requires a sign flip. It looks more like a
+general overpricing of YES. If it holds up it's a different effect wearing the
+same clothes, and I should stop calling it favorite-longshot bias until I know
+which it is.
+
+Also built: four figures (`make figures`), generated from the same functions
+`make analyze` prints so a chart can't drift from its table, and a notebook that
+displays results and computes none of its own. `docs/methodology.md` and
+`docs/findings.md` are written. 192 tests pass, 20 new.
+
+Next, Phase 4: the fee model, which is where a 2–3 cent pooled edge either
+becomes a strategy or doesn't. But the more interesting thread is the one this
+milestone opened — whether the non-Sports effect is real, which needs more
+Economics events than a six-month window gives, and whether the top-bucket
+anomaly and the Economics asymmetry are the same phenomenon.

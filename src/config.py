@@ -152,6 +152,39 @@ class CleanConfig(BaseModel):
     processed_path: str
 
 
+class AnalysisConfig(BaseModel):
+    """How calibration is measured and how uncertainty around it is computed.
+
+    Attributes:
+        n_buckets: Equal-width buckets on implied_price for the reliability
+            diagram.
+        confidence: Two-sided coverage of every reported interval.
+        cluster_on: Column whose groups are resampled as blocks. Contracts
+            sharing an event are one outcome expressed many times; treating
+            them as independent understates every interval. ADR 004 decision 6
+            forbids reporting an unclustered interval.
+        bootstrap_reps: Block-bootstrap replications.
+        bootstrap_seed: Fixed so the same processed table always yields the
+            same intervals.
+        fdr_alpha: Benjamini-Hochberg level across the per-bucket tests.
+        segment_n_buckets: Buckets used for per-category and per-lifetime
+            tables. Coarser than the headline deciles because the slices
+            are thinner; fixed from segment sizes, not segment results.
+        min_events_per_bucket: A segment bucket with fewer events is
+            reported and flagged rather than tested, and is excluded from
+            the correction family.
+    """
+
+    n_buckets: int = Field(ge=2)
+    confidence: float = Field(gt=0.0, lt=1.0)
+    cluster_on: str
+    bootstrap_reps: int = Field(ge=100)
+    bootstrap_seed: int
+    fdr_alpha: float = Field(gt=0.0, lt=1.0)
+    segment_n_buckets: int = Field(ge=2)
+    min_events_per_bucket: int = Field(ge=1)
+
+
 class Config(BaseModel):
     """The whole of config.yaml, validated."""
 
@@ -163,6 +196,7 @@ class Config(BaseModel):
     retry: RetryConfig
     ingest: IngestConfig
     clean: CleanConfig
+    analysis: AnalysisConfig
 
     @model_validator(mode="after")
     def price_horizon_was_ingested(self) -> "Config":
