@@ -1,4 +1,4 @@
-# favorite-longshot-bias
+# Kalshi-Favorite-Longshot-Bias-Study
 
 Do prediction-market prices tell the truth about probability? If a Kalshi
 contract trades at 30¢, the market is claiming a 30% chance. This checks
