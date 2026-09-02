@@ -29,27 +29,6 @@ events — a lead, not an answer).
 
 Full numbers: **[docs/findings.md](docs/findings.md)**.
 
-## Can you trade it?
-
-![equity curve](reports/figures/05_equity_curve.png)
-
-Barely. A backtest that only learns from earlier markets and only trades later
-ones makes **+1.23%** after real Kalshi fees, half-Kelly sized. Run backwards —
-betting against the bias instead of with it — it loses **−14.6%** on the same
-contracts and fees, which is what should happen if the finding is real.
-
-**The actual headline is smaller than either number.** The backtest fills at
-the last traded price; a real trade also crosses the bid-ask spread, which
-isn't in Kalshi's historical data and can't be measured directly. The spread
-that would erase the entire edge is **under one cent per contract** — thin
-enough that an ordinary spread could eat it. So: the bias is real, it survives
-fees, and whether it survives *trading* depends on a cost this data can't see.
-
-Held up across a range of settings (edge threshold, train/test split, bet
-size) — never flips sign. Details:
-[docs/limitations.md](docs/limitations.md) ·
-[reports/calibration-study.md](reports/calibration-study.md).
-
 ## Two problems that shaped the project
 
 **The obvious price is the answer in disguise.** A settled market's
