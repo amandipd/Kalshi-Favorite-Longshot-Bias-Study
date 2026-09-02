@@ -15,6 +15,24 @@ low-probability ones.
 
 ![calibration curve](reports/figures/01_reliability_diagram.png)
 
+Every settled contract is pooled into ten price bands (0–10¢, 10–20¢, ... 90–100¢).
+If Kalshi's prices were perfect probabilities, a band would resolve YES exactly as
+often as its own price says. The chart below shows how far off each band actually
+was, in cents, with a 95% confidence interval on each bar:
+
+![price minus reality, by band](reports/figures/08_bias_by_bucket_cents.svg)
+
+| color | meaning |
+|---|---|
+| 🟧 orange | **overpriced** — the band happened *less* often than its price implied |
+| 🟦 blue | **underpriced** — the band happened *more* often than its price implied |
+| ⬜ gray, "n.s." | bar isn't statistically distinguishable from zero |
+
+Reading left to right, cheapest contracts to most expensive: every band under 50¢
+is overpriced, every band from 50¢ to 90¢ is underpriced — the sign flips cleanly
+at the 50¢ coin-flip point — and the 90–100¢ band unexpectedly flips back to
+overpriced (see "Heavy favorites at 90¢+" below).
+
 **The prices are good.** Brier score **0.1213** — the mean squared error
 between each forecast (a probability, e.g. 0.30) and what actually happened
 (1 if it did, 0 if it didn't); 0 is a perfect forecaster, 1 is the worst
