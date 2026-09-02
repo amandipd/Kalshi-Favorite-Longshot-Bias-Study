@@ -75,7 +75,7 @@ def wilson_interval(
     **This interval assumes independent Bernoulli draws, which this dataset
     violates.** It is computed only to quantify how badly -- the ratio of a
     clustered width to this one is the design effect reported in the
-    calibration table. ADR 004 decision 6 forbids reporting it as the interval.
+    calibration table. Design decision doc 004 decision 6 forbids reporting it as the interval.
 
     Args:
         successes: Count of outcomes equal to 1.

@@ -13,7 +13,7 @@ Three axes, chosen because each is a real fork the design took:
                       net edge. A results table that only holds up at exactly
                       0.0 would be a coincidence dressed as a finding.
 
-    train_fraction    Where the estimation/trading boundary falls (ADR 006).
+    train_fraction    Where the estimation/trading boundary falls (design decision doc 006).
                       Moving it trades estimation precision for tradeable
                       sample, and moves the training and trading periods
                       through different parts of the 3.5x volume ramp.
@@ -83,7 +83,7 @@ def sweep_train_fraction(
     fractions: tuple[float, ...] = (0.4, 0.5, 0.6, 0.7, 0.8),
     config: Config | None = None,
 ) -> pd.DataFrame:
-    """Move the estimation/trading boundary (ADR 006) and re-run both sides.
+    """Move the estimation/trading boundary (design decision doc 006) and re-run both sides.
 
     A smaller fraction trades more contracts on a noisier in-sample estimate;
     a larger one trades fewer contracts on a tighter one. Volume ramps 3.5x

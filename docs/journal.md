@@ -22,17 +22,17 @@ Then I wrote `src/ingest/summary.py`, which reads back everything sitting in `da
 
 One thing moved underneath me: Kalshi's live-vs-historical cutoff was 2026-06-06 when I explored this on Aug 5, and it's 2026-06-29 now. Kalshi keeps migrating recent data across that line, so the historical endpoints now reach about three weeks further forward than when I picked my date range. I left the config window alone — I'd rather have one fixed, defensible window than quietly extend it every time I re-run — but every run saves the cutoff it saw to `_cutoff.json`, so there's a record of what "everything available" meant on the day of each pull.
 
-Finally, the documentation. `docs/000-overview.md` had been a TBD stub since day one and now states the actual research question, the hypothesis in a falsifiable form, and six concrete success criteria — including that a *negative* result (Kalshi turns out to be well calibrated) still counts as success, as long as it's measured honestly. I also wrote the two architecture decision records: `001-storage-layers.md` on why raw JSON is kept immutable and separate from the parsed and cleaned layers, and `002-ingestion-idempotency.md` on why resumption keys off file paths rather than a checkpoint file, why cached pages still get read (each page carries the next one's cursor), and why writes go through a temp file and a rename — a run killed mid-write would otherwise leave a truncated page that the next run happily treats as finished. And `docs/data-sources.md` documents every endpoint, the live-vs-historical trap, the rate limits, and the fact that every price Kalshi returns is a *string*.
+Finally, the documentation. `docs/000-overview.md` had been a TBD stub since day one and now states the actual research question, the hypothesis in a falsifiable form, and six concrete success criteria — including that a *negative* result (Kalshi turns out to be well calibrated) still counts as success, as long as it's measured honestly. I also wrote the two design decision docs: `001-storage-layers.md` on why raw JSON is kept immutable and separate from the parsed and cleaned layers, and `002-ingestion-idempotency.md` on why resumption keys off file paths rather than a checkpoint file, why cached pages still get read (each page carries the next one's cursor), and why writes go through a temp file and a rename — a run killed mid-write would otherwise leave a truncated page that the next run happily treats as finished. And `docs/data-sources.md` documents every endpoint, the live-vs-historical trap, the rate limits, and the fact that every price Kalshi returns is a *string*.
 
-Writing the data-sources doc turned up something that decides the next big call for me. I'd assumed the Phase 2 price choice was a free judgment between last trade, bid-ask mid, and closing price. It isn't: on a settled market the order book is gone, and Kalshi reports `yes_bid: 0.0000` / `yes_ask: 1.0000` — a maximally wide quote that isn't a price at all. A mid computed from that is 0.50 for every single contract. The historical endpoint gives one post-settlement snapshot rather than a time series, so last traded price is the only usable implied probability available. That's a constraint to document honestly in ADR 003, not a preference to defend — and it's a real limitation of the study, since a last trade in a thin market can be hours stale.
+Writing the data-sources doc turned up something that decides the next big call for me. I'd assumed the Phase 2 price choice was a free judgment between last trade, bid-ask mid, and closing price. It isn't: on a settled market the order book is gone, and Kalshi reports `yes_bid: 0.0000` / `yes_ask: 1.0000` — a maximally wide quote that isn't a price at all. A mid computed from that is 0.50 for every single contract. The historical endpoint gives one post-settlement snapshot rather than a time series, so last traded price is the only usable implied probability available. That's a constraint to document honestly in design decision doc 003, not a preference to defend — and it's a real limitation of the study, since a last trade in a thin market can be hours stale.
 
-Next up is the Phase 1 gate, then Phase 2: the price definition ADR, then parsing raw JSON into the interim dataset.
+Next up is the Phase 1 gate, then Phase 2: the price definition design decision doc, then parsing raw JSON into the interim dataset.
 
 *(later the same day — Phase 2 begins)*
 
 Phase 2 started with what was supposed to be a quick decision — pick which price counts as "the market's implied probability" — and turned into the most important finding of the project so far.
 
-I'd assumed this was a free choice between three options the proposal listed: last traded price, the midpoint of the bid and ask, or a volume-weighted average. Before writing the ADR I decided to actually measure all three against the 145,047 markets I'd pulled, rather than reasoning about them from the docs. Two of the three died immediately.
+I'd assumed this was a free choice between three options the proposal listed: last traded price, the midpoint of the bid and ask, or a volume-weighted average. Before writing the design decision doc I decided to actually measure all three against the 145,047 markets I'd pulled, rather than reasoning about them from the docs. Two of the three died immediately.
 
 **The bid-ask midpoint doesn't exist.** On a settled market the order book is gone — 54.9% of markets report a bid of $0.00 and an ask of $1.00, which isn't a wide spread so much as the absence of any quote at all. The median spread across the whole corpus is a full dollar, and open interest is exactly zero on all 145,047 records. A midpoint computed from that returns 50¢ for most of the dataset regardless of what anyone ever believed.
 
@@ -68,13 +68,13 @@ The T-1h pull finished — all 143,143 binary markets have a price from an hour
 before close — so today was about turning that into the two dataset layers the
 analysis reads, and the first look at what's in them.
 
-Before parsing anything I closed a gap between ADR 004 and the code. I wrote
-that ADR after `clean.py`, and its decision 6 says `event_ticker` has to be
+Before parsing anything I closed a gap between design decision doc 004 and the code. I wrote
+that design decision doc after `clean.py`, and its decision 6 says `event_ticker` has to be
 carried on every row so Phase 3 can cluster standard errors on it — "any
 interval computed without this clustering is wrong." The `Contract` model
 didn't have the field. Parsing 145k rows and then discovering they can't be
 clustered would have meant doing it twice, so the field went in first, along
-with two assertions the ADR calls for: a market whose `status` isn't
+with two assertions the design decision doc calls for: a market whose `status` isn't
 `finalized` now raises rather than being dropped (an unsettled market's
 `result` isn't an outcome, so that's a bug in ingestion, not a row to skip),
 and a market with no `event_ticker` is dropped against a named reason rather
@@ -82,7 +82,7 @@ than falling back to an empty string — a row that can't be clustered is worse
 than a missing one, because a shared empty key pools unrelated markets into a
 single fake event. I checked both against the corpus before writing the code:
 zero markets are missing an event ticker and all 145,047 are `finalized`, which
-is what ADR 004 claimed and is now enforced rather than assumed.
+is what design decision doc 004 claimed and is now enforced rather than assumed.
 
 Then I built the interim layer, and the horizon fix from Phase 2 held up:
 **pinned prices fell from 92.5% to 1.1%**. That single number is the whole
@@ -92,20 +92,20 @@ forecast. 122,767 of 145,047 markets survive parsing — 20,376 had no trade an
 hour before close (5,860 of them Crypto strike ladders nobody ever took) and
 1,904 were scalar settlements.
 
-Next I wrote `interim_to_processed`, the step ADR 004 specifies. What's
+Next I wrote `interim_to_processed`, the step design decision doc 004 specifies. What's
 interesting about it is how little it does: two filters, a close-time window
-and a non-zero volume, plus two assertions. Everything else in that ADR is a
+and a non-zero volume, plus two assertions. Everything else in that design decision doc is a
 filter I decided *not* to write — no volume floor, no de-duplication by event,
 no NO-framing flip — and each of those absences is as much a decision as the
 filters that run, so the function says so in its docstring. Someone reading it
 later shouldn't have to wonder whether the volume floor was omitted on purpose.
 
 The result: **100,210 contracts across 29,895 events**, closing between
-2025-12-01 and 2026-06-06. That's ahead of ADR 004's ~89,000 projection,
+2025-12-01 and 2026-06-06. That's ahead of design decision doc 004's ~89,000 projection,
 because the projection had double-counted the volume filter. In fact the volume
 filter now removes **nothing at all** — every zero-volume market was already
 gone at the parse step, since a market that never traded has no trade at any
-horizon either. That's the ADR's own argument for the criterion turning out to
+horizon either. That's the design decision doc's own argument for the criterion turning out to
 be so completely true that the criterion is redundant. I kept it anyway and
 recorded why: it costs nothing, and it would bite immediately if the price
 method were ever switched back to a snapshot field, which happily reports a
@@ -163,7 +163,7 @@ either becomes a finding or stops being one.
 The whole milestone is about the *interval*, not the estimate. The point
 estimates were never in doubt — bucket the prices, average the outcomes,
 subtract — and I already had them this morning. What I did not have was any
-right to call the gaps real, because ADR 004 says plainly that an interval
+right to call the gaps real, because design decision doc 004 says plainly that an interval
 computed without clustering on `event_ticker` "is wrong and must not be
 reported," and until today nothing computed one.
 
@@ -221,7 +221,7 @@ Then the results, from `make analyze`:
 
 Brier 0.1213 = reliability 0.00029 − resolution 0.1258 + uncertainty 0.2476.
 
-**The clustering cost what ADR 004 predicted, exactly where it predicted.**
+**The clustering cost what design decision doc 004 predicted, exactly where it predicted.**
 The design effect is ~1.03 through the middle and rises in both tails — 1.45
 in the 0–10¢ bucket, 1.20 in the 90¢–100¢ bucket — which are the two buckets
 holding the big mutually-exclusive fields. In the bottom bucket the corrected
@@ -255,7 +255,7 @@ moved (the bottom bucket from 24,117 to 22,993) because I fixed the bin edges
 to be left-closed. Pandas' default is right-closed, which put the 1,124
 contracts priced at exactly 0.10 in the *bottom* bucket. Left-closed matches
 how the bands are spoken about — 10¢ starts the 10–20¢ band — and needs no
-special case at zero. Recorded in ADR 005 so nobody later has to wonder why
+special case at zero. Recorded in design decision doc 005 so nobody later has to wonder why
 two tables of the same data disagree.
 
 All of it is in `docs/adr/005-bucketing-and-tests.md`, including why Wilson
@@ -282,7 +282,7 @@ at the data rather than the proposal.
 **The logit is defined everywhere, which I expected to have to argue about.**
 Kalshi's tick floor is 0.001, so no price sits at exactly 0 or 1 and the
 logistic regression needs no clipping, winsorising, or dropping. I'd budgeted
-an ADR paragraph for a judgment call that turned out not to exist. It still
+a design decision doc paragraph for a judgment call that turned out not to exist. It still
 raises on a boundary price rather than clipping silently, because if one ever
 appears, how to handle it is a research decision and not a numerical
 convenience.
@@ -297,7 +297,7 @@ correction family. Politics comes back untestable in every single cell, which
 is the honest answer rather than a gap to paper over.
 
 **"Time to resolution" doesn't exist in this dataset.** The proposal asks for
-`bias_by_time_to_resolution`. But ADR 003 prices every market at exactly one
+`bias_by_time_to_resolution`. But design decision doc 003 prices every market at exactly one
 hour before close, so time-from-forecast-to-outcome is ~1 hour for all 100,210
 rows *by construction*. A function with that name would be measuring settlement
 lag while claiming to measure forecast horizon. What actually varies is market
@@ -424,7 +424,7 @@ optimistic, it's incoherent — reporting returns on capital nobody has. I added
 a daily deployment cap that scales an over-budget day proportionally, keeping
 the relative Kelly weights.
 
-The honest consequence, which is now in ADR 007: **the budget binds on 99.9% of
+The honest consequence, which is now in design decision doc 007: **the budget binds on 99.9% of
 trades.** Kelly sets the relative weights and the portfolio constraint sets the
 level, so calling this "Kelly-sized" without that sentence would be overselling
 it.
@@ -445,7 +445,7 @@ and its losses compound differently.
 
 But the number I'd actually lead with is none of those. The backtest fills at
 the last traded price, and a real taker crosses the spread. I can't measure the
-spread — settled snapshots carry no usable book, which is the same ADR 003
+spread — settled snapshots carry no usable book, which is the same design decision doc 003
 problem that forced the T-1h pull in the first place. So rather than invent a
 slippage number that would look rigorous, I compute the **breakeven slippage**:
 the adverse fill per contract that erases the whole edge.
@@ -479,7 +479,7 @@ final writeups.
 The sweeps were the point of this milestone, and they came back clean. I swept
 three things the backtest could plausibly have been set differently on:
 `min_net_edge` (how much margin above the fee a bucket needs before it's
-traded), `train_fraction` (where ADR 006's estimate/trade split falls), and
+traded), `train_fraction` (where design decision doc 006's estimate/trade split falls), and
 `kelly_fraction` (the risk dial, included as a sanity check rather than a
 search).
 
@@ -505,7 +505,7 @@ what does "the threshold" mean when I never implemented the proposal's literal
 `longshot_threshold` / `favorite_threshold` price cutoffs? I'd replaced those
 with a derived rule — trade a bucket iff its in-sample bias is significant and
 survives the fee — specifically so no one could pick a cutoff by eye after
-seeing the full-sample answer (ADR 006, decision 4). So the sensitivity
+seeing the full-sample answer (design decision doc 006, decision 4). So the sensitivity
 analysis the proposal asked for maps onto sweeping the parameters *of that
 derivation* rather than sweeping a manual price line. I think that's the more
 honest version of the same question, and I said so directly in the module

@@ -1,4 +1,4 @@
-# ADR 002 - Resumable, idempotent ingestion
+# Design decision doc 002 - Resumable, idempotent ingestion
 
 **Status:** Accepted (Phase 1, 2026-08-09)
 
@@ -80,7 +80,7 @@ immediate re-run must report `pages_fetched=0` and the same total.
 
 - **Cached pages are trusted, not verified.** A page written by an older code
   version, or hand-edited, is accepted as-is. Acceptable because raw is
-  immutable by policy (ADR 001) and pages are byte-faithful responses -- there
+  immutable by policy (design decision doc 001) and pages are byte-faithful responses -- there
   is no schema of ours for them to drift from. Re-fetching means deleting
   files, which is the intended, explicit gesture.
 - **Re-fetch is all-or-nothing per series.** There is no "refresh pages older
@@ -101,5 +101,5 @@ immediate re-run must report `pages_fetched=0` and the same total.
 - **A content hash per page to detect drift.** Rejected as premature. Settled
   markets are immutable upstream, so there is nothing legitimate to detect.
 - **One file per market instead of per page.** Rejected: it would mean parsing
-  during ingestion to split the response, violating ADR 001's verbatim rule,
+  during ingestion to split the response, violating design decision doc 001's verbatim rule,
   and it discards the cursor the next page needs.

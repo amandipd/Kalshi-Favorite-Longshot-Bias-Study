@@ -49,7 +49,7 @@ TRADES_ENDPOINT = "/historical/trades"
 
 # Settlement values that mark a genuinely binary contract. `scalar` markets
 # settle at fractional values (0.45, 0.53, ...) and are not the object this
-# study is about, so they are never fetched -- see ADR 004.
+# study is about, so they are never fetched -- see design decision doc 004.
 BINARY_RESULTS = frozenset({"yes", "no"})
 
 
@@ -65,7 +65,7 @@ class TradeStats:
 
     `no_trade` is not a failure: a market with no trade before the cutoff
     simply did not exist, or had not traded, that far ahead of its close. It is
-    a documented exclusion with a count (ADR 003), which is why it is recorded
+    a documented exclusion with a count (design decision doc 003), which is why it is recorded
     on disk as an explicit null rather than left absent.
     """
 

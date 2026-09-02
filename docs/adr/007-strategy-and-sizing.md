@@ -1,10 +1,10 @@
-# ADR 007 - The trading rule, its sizing, and what a trade costs
+# Design decision doc 007 - The trading rule, its sizing, and what a trade costs
 
 **Status:** Proposed (Phase 4, 2026-09-01) -- awaiting ratification
 
 ## Context
 
-ADR 006 settled *when* the strategy may learn. This settles *what it does*: the
+Design decision doc 006 settled *when* the strategy may learn. This settles *what it does*: the
 rule, how big each position is, and what the trade costs. The costs turn out to
 matter more than the rule.
 
@@ -24,7 +24,7 @@ The side is the sign of the in-sample bias: negative means the market priced it
 too high, so the profitable side is NO.
 
 Both filters run on training data, so the thresholds are *derived* rather than
-chosen (ADR 006, decision 4).
+chosen (design decision doc 006, decision 4).
 
 ### 2. Fees: Kalshi's taker schedule, verified, and paid once
 
@@ -39,7 +39,7 @@ is no exit trade and settlement is free.
 **Taker, not maker.** The maker rate is a quarter of this, and using it would
 be assuming the hard part away: a resting order's fill depends on the order
 book, the historical data has no usable book (54.9% of settled snapshots quote
-0/1, ADR 003), and an unfilled maker order earns nothing. Assuming taker is the
+0/1, design decision doc 003), and an unfilled maker order earns nothing. Assuming taker is the
 assumption we can defend.
 
 **Rounding is per order.** The filed formula puts `C` inside the ceiling, so
@@ -109,7 +109,7 @@ contract that would erase the entire edge.
 It is **0.98c**. Under one cent.
 
 That number, not the ROI, is the honest summary of tradeability, and it is why
-this ADR does not claim the strategy works.
+this design decision doc does not claim the strategy works.
 
 ## Consequences
 

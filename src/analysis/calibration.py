@@ -16,7 +16,7 @@ The vocabulary, once, since the rest of the module leans on it:
                     negative bias among longshots and positive among favorites.
 
 Every interval and p-value here is clustered on `event_ticker`, because
-contracts sharing an event are one outcome expressed many times (ADR 004,
+contracts sharing an event are one outcome expressed many times (design decision doc 004,
 decision 6). `statistics.py` holds the estimators; this module decides what
 gets estimated.
 """
@@ -401,7 +401,7 @@ def logistic_calibration(
     question is whether the slope differs from 1, so that test is computed
     here.
 
-    Standard errors cluster on `event_ticker` (ADR 004 decision 6): the fit is
+    Standard errors cluster on `event_ticker` (design decision doc 004 decision 6): the fit is
     over 100k contracts but only ~30k independent events, and the uncorrected
     errors would be far too small.
 

@@ -3,8 +3,8 @@
 How the calibration claim in `docs/findings.md` is constructed, and what each
 step is defending against. This is the methods section of the final report.
 
-The decisions themselves live in the ADRs — this document says what the method
-*is*; the ADRs say why it is that and not something else.
+The decisions themselves live in the design decision docs — this document says what the method
+*is*; the design decision docs say why it is that and not something else.
 
 | | |
 |---|---|
@@ -37,12 +37,12 @@ would be the same variable.
 Sampling at T-1h drops pinning to **1.1%**. One hour maximises usable yield —
 retention × (1 − pinned) — against the opposing failure at long horizons, where
 the market did not yet exist and the survivors are a sample selected on
-longevity. Full sweep in ADR 003.
+longevity. Full sweep in design decision doc 003.
 
 **Outcome.** 1 if the event occurred, 0 otherwise, always defined relative to
 the same proposition the price refers to. No contract needs a NO-framing flip:
 measured across all 143,143 binary markets, titles containing negations number
-zero (ADR 004).
+zero (design decision doc 004).
 
 **Exclusions** are counted against a named reason and broken down by category,
 because an exclusion falling unevenly across categories is a bias rather than a
@@ -108,7 +108,7 @@ per event.
 
 Treating them as independent inflates the apparent sample and narrows every
 interval — most severely in the tail buckets, since large mutually-exclusive
-fields are overwhelmingly longshots. ADR 004 decision 6 therefore forbids
+fields are overwhelmingly longshots. Design decision doc 004 decision 6 therefore forbids
 reporting any unclustered interval.
 
 Two estimators, both clustering on the event:

@@ -1,4 +1,4 @@
-# ADR 006 - Estimating on one period and trading on a later one
+# Design decision doc 006 - Estimating on one period and trading on a later one
 
 **Status:** Proposed (Phase 4, 2026-09-01) -- awaiting ratification
 
@@ -25,7 +25,7 @@ Two independent reasons, either sufficient.
 The same PGA field, the same CPI ladder -- and because exactly one contract in
 a mutually exclusive field resolves yes, seeing 249 of them in training tells
 you the 250th. The "out-of-sample" set would contain outcomes logically
-determined by the training set. This is the same non-independence ADR 004
+determined by the training set. This is the same non-independence design decision doc 004
 built the clustering for, reappearing as leakage.
 
 **Direction of time.** A random split lets the strategy learn from June to

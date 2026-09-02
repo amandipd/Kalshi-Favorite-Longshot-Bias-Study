@@ -11,7 +11,7 @@ bear.
 The backtest fills every trade at the last traded price. A real order crosses
 the bid-ask spread, and that cost is not in this model anywhere, because it
 cannot be measured from this data: settled snapshots carry no usable order
-book (54.9% quote bid $0.00 / ask $1.00, ADR 003). This is the same defect
+book (54.9% quote bid $0.00 / ask $1.00, design decision doc 003). This is the same defect
 that forced the two-pass ingestion in the first place, showing up again one
 layer downstream.
 
@@ -35,7 +35,7 @@ composition -- effectively all Sports. Three consequences:
   next twelve months look like this particular 48 days, which is an assumption,
   not a measurement.
 - The out-of-sample window sits in the higher-volume second half of the
-  ingestion period (ADR 006), so it is not a random sample of "future" Kalshi
+  ingestion period (design decision doc 006), so it is not a random sample of "future" Kalshi
   behaviour -- it is specifically the busier months.
 - A single train/test split means the ROI is one draw, not a distribution.
   Walk-forward re-estimation (re-splitting monthly and re-running) would give
@@ -49,11 +49,11 @@ Peak gross bias is 2.98 cents. Compare that to two boundary calls made
 elsewhere in the pipeline that could plausibly have gone the other way and are
 each worth roughly that much:
 
-- **Bucket edges are left-closed.** ADR 005 documents that this alone moved
+- **Bucket edges are left-closed.** design decision doc 005 documents that this alone moved
   1,124 contracts between buckets relative to a right-closed convention.
 - **The pricing horizon is T-1h**, chosen because it maximizes a yield metric,
   not because it is the unique correct answer. T-6h retains more markets with
-  even less pinning (ADR 003's own table) and has not yet been re-run through
+  even less pinning (design decision doc 003's own table) and has not yet been re-run through
   the full calibration and backtest pipeline. If the sign or magnitude of the
   bias moved substantially at T-6h, that would say the finding is sensitive to
   a choice inside the study's own design space, not just to real-world
@@ -71,7 +71,7 @@ whether the result depends on the exact value chosen (`src/strategy/sensitivity.
   buckets with real margin rather than manufactured by including every
   marginal one. Above 1.0c nothing clears the bar and the strategy trades
   nothing, which is the ceiling on how much margin exists, not a failure.
-- **`train_fraction`** (0.4 to 0.8, moving where ADR 006's split falls): ROI
+- **`train_fraction`** (0.4 to 0.8, moving where design decision doc 006's split falls): ROI
   ranges 1.05%-2.23% and the control falsifies at every value tried. The
   result is not balanced on the specific 0.6 chosen.
 - **`kelly_fraction`** (0.1 to 1.0, an invariance check rather than a search):
@@ -102,7 +102,7 @@ months.
 
 `top_n_series_per_category = 20` (config.yaml) means only the twenty
 highest-volume series per category were ingested. This is deliberate --
-ADR 004's own language calls the long tail "near-zero-volume markets where
+Design decision doc 004's own language calls the long tail "near-zero-volume markets where
 price reflects noise, not a market view" -- but it means every number in this
 study describes Kalshi's most liquid markets, not Kalshi as a whole. A bias
 found in the top 20 series per category need not hold in the long tail, and
@@ -111,7 +111,7 @@ this study makes no claim that it does.
 ## The strategy rule is one reasonable design, not the only one
 
 Buckets are traded when significant AND fee-positive in-sample; sizing is
-half-Kelly capped by a daily portfolio budget (ADR 007). Two things worth
+half-Kelly capped by a daily portfolio budget (design decision doc 007). Two things worth
 naming as choices rather than facts:
 
 - **The daily budget binds on 99.9% of trades.** Kelly sets the relative
@@ -139,5 +139,5 @@ Concretely, in order of how much it would move the headline claim:
    past "thin" and to give the backtest more than one out-of-sample draw via
    walk-forward re-estimation.
 4. **The T-6h and T-24h horizons run through calibration and the backtest**,
-   not just the pinning-rate table in ADR 003, to show the result is not an
+   not just the pinning-rate table in design decision doc 003, to show the result is not an
    artefact of the specific T-1h choice.

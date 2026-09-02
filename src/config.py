@@ -28,9 +28,9 @@ class DateRange(BaseModel):
     """Inclusive window the study covers, applied to each market's `close_time`.
 
     Close rather than settlement: close is the anchor the horizon price is
-    measured against (ADR 003), so it is the timestamp that says when the
+    measured against (design decision doc 003), so it is the timestamp that says when the
     forecast was made. Settlement can lag it by an arbitrary settlement timer.
-    Both bounds are inclusive whole days in UTC (ADR 004, decision 2).
+    Both bounds are inclusive whole days in UTC (design decision doc 004, decision 2).
     """
 
     start: date
@@ -161,7 +161,7 @@ class AnalysisConfig(BaseModel):
         confidence: Two-sided coverage of every reported interval.
         cluster_on: Column whose groups are resampled as blocks. Contracts
             sharing an event are one outcome expressed many times; treating
-            them as independent understates every interval. ADR 004 decision 6
+            them as independent understates every interval. Design decision doc 004 decision 6
             forbids reporting an unclustered interval.
         bootstrap_reps: Block-bootstrap replications.
         bootstrap_seed: Fixed so the same processed table always yields the

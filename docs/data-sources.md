@@ -108,7 +108,7 @@ all. A bid-ask mid computed from a settled snapshot returns 0.50 for every
 contract regardless of what the market believed. `/historical/markets` gives
 one post-settlement snapshot, not a time series, so `last_price_dollars` is
 the only usable implied price available from this endpoint. That constraint,
-not preference, drives ADR 003.
+not preference, drives design decision doc 003.
 
 ## Polymarket (stretch, not yet ingested)
 

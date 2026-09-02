@@ -1,17 +1,17 @@
-# ADR 004 - What is in the study
+# Design decision doc 004 - What is in the study
 
 **Status:** Proposed (Phase 2, 2026-08-29) -- awaiting ratification
 
 ## Context
 
-ADR 003 settled *which number* is the forecast. This one settles *which rows*
+Design decision doc 003 settled *which number* is the forecast. This one settles *which rows*
 carry it. Four places already forward-reference this document
-(`000-overview.md`, `models.py`, `ingest/trades.py`, ADR 003), so the criteria
+(`000-overview.md`, `models.py`, `ingest/trades.py`, design decision doc 003), so the criteria
 have been assumed by the rest of the project without ever being written down.
 
 The split matters for the drop accounting. `parse_raw_to_interim` drops only
 what *cannot become a row* -- a non-binary settlement, an unparsable price, a
-failed model invariant. This ADR governs `interim_to_processed`, where every
+failed model invariant. This design decision doc governs `interim_to_processed`, where every
 exclusion is a **research** choice rather than a data defect, and where an
 exclusion that falls unevenly across categories is a bias rather than a
 smaller sample.
@@ -48,7 +48,7 @@ one, and because it would bite immediately if the price method were ever
 switched to a snapshot field, which reports a number without needing a trade.
 
 Comfortably above criterion 1's floor of 1,000 contracts. Sample size is not
-the binding constraint anywhere in this ADR; **independence is.**
+the binding constraint anywhere in this design decision doc; **independence is.**
 
 ### Contracts are not independent observations
 
@@ -85,7 +85,7 @@ large mutually-exclusive fields are overwhelmingly longshots.
 
 ### Framing is uniform, so no complement is needed
 
-ADR 003 deferred "NO-framing normalisation" here. Measured, it is a non-issue:
+Design decision doc 003 deferred "NO-framing normalisation" here. Measured, it is a non-issue:
 across all 143,143 binary markets, titles containing `not`, `no`, `never`,
 `fail`, `under`, `less`, or `without` number **zero**. Every market is stated
 as an affirmative proposition -- "Will X happen?", "Above $3.098",
@@ -104,7 +104,7 @@ primary horizon. Event structure is carried, not filtered.**
    at fractional values and are a different object. Applied at parse time.
 2. **The window filter is on `close_time`**, not `settlement_ts` or
    `open_time`. `close_time` is the anchor the horizon price is defined
-   against (ADR 003), so it is the timestamp that decides when the forecast
+   against (design decision doc 003), so it is the timestamp that decides when the forecast
    was made. The three barely differ in practice -- 81.0% / 81.1% / 81.7% --
    so this is chosen for coherence, not yield.
 3. **`volume_fp > 0`.** Excludes 6,928 in-window markets that never traded.
@@ -149,7 +149,7 @@ the drop log, per the existing `DropLog` contract.
   every row not in it.
 - The independence problem is caught before the analysis rather than after a
   reviewer asks why 8,000 golfer contracts counted as 8,000 observations.
-- No filter in this ADR selects on liquidity, price, or outcome, so none of
+- No filter in this design decision doc selects on liquidity, price, or outcome, so none of
   them can manufacture the bias being tested.
 
 **Given up / limitations to state in the writeup**
@@ -167,7 +167,7 @@ the drop log, per the existing `DropLog` contract.
   33,300 events. Clustered intervals will be materially wider than naive ones,
   and that is the correct outcome, not a loss of power to work around.
 - **~19% of ingested markets fall outside the window** and are kept on disk
-  but unused, per ADR 002's decision to filter in `clean.py` rather than at
+  but unused, per design decision doc 002's decision to filter in `clean.py` rather than at
   ingest. Widening the window later re-downloads nothing.
 - **Nested threshold events are correlated but not exchangeable.** Clustering
   handles the variance; it does not make a monotone ladder into independent

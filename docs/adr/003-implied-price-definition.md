@@ -1,4 +1,4 @@
-# ADR 003 - What counts as "the market's implied probability"
+# Design decision doc 003 - What counts as "the market's implied probability"
 
 **Status:** Accepted (Phase 2, 2026-08-28)
 
@@ -120,7 +120,7 @@ Supporting decisions:
    inconsistency to hide.
 3. **Price is always the YES leg.** Kalshi reports `yes_price_dollars` on
    every trade regardless of which side the taker was on, so no flip is needed
-   at this layer. NO-framing normalisation happens in `clean.py`, per ADR 004.
+   at this layer. NO-framing normalisation happens in `clean.py`, per design decision doc 004.
 4. **"No trade before the horizon" is recorded, not silently skipped.** The
    ingester writes an explicit null for those markets. They are a documented
    exclusion with a count, not an absence -- and their share by category is

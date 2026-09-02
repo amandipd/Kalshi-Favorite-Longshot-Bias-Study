@@ -245,7 +245,7 @@ class TradesProgress:
                 cat = categories[name]
                 # no_trade is a share of what has been fetched, not of what
                 # exists -- it is an exclusion rate, and comparing it across
-                # categories is how an uneven one shows up (see ADR 003).
+                # categories is how an uneven one shows up (see design decision doc 003).
                 share = (cat.no_trade / cat.done) if cat.done else 0.0
                 lines.append(
                     f"    {name:<12} {_bar(cat.fraction, 16)} {cat.fraction:>6.1%}  "

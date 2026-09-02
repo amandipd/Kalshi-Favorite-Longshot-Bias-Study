@@ -8,7 +8,7 @@ ingest:
 	python -m src.ingest.kalshi
 
 # Pass 2: a price per market at each horizon before close -> data/raw_trades/
-# The settled snapshot cannot supply an implied probability (ADR 003).
+# The settled snapshot cannot supply an implied probability (design decision doc 003).
 ingest-trades:
 	python -m src.ingest.trades
 

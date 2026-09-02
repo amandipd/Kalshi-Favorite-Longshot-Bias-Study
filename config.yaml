@@ -105,7 +105,7 @@ clean:
   # How the market's implied probability is read off the data.
   #
   #   horizon_trade  the last trade at or before close - price_horizon_hours.
-  #                  The only defensible choice here; see ADR 003.
+  #                  The only defensible choice here; see design decision doc 003.
   #   last_trade     the settled snapshot's last_price. 92.5% pinned to the
   #                  settlement value -- kept so the writeup can SHOW the
   #                  degenerate curve it produces, not because it is usable.
@@ -133,7 +133,7 @@ analysis:
   # Every interval and p-value is clustered on `event_ticker`. A 250-golfer
   # field is ONE outcome expressed as 250 contracts, and threshold ladders are
   # monotonically bound by construction, so contracts are nowhere near
-  # independent (mean 3.35 per event). ADR 004 decision 6: "any interval
+  # independent (mean 3.35 per event). Design decision doc 004 decision 6: "any interval
   # computed without this clustering is wrong and must not be reported."
   cluster_on: "event_ticker"
 
@@ -230,7 +230,7 @@ strategy:
   #
   # The backtest fills at the last traded price. A real taker crosses the
   # spread, so the true entry is worse by roughly half the bid-ask. We CANNOT
-  # measure that: settled snapshots carry no usable book (54.9% quote 0/1, ADR
+  # measure that: settled snapshots carry no usable book (54.9% quote 0/1, design decision doc
   # 003), so there is no spread to read. Default 0.0 means the headline result
   # is a NO-SPREAD upper bound, and `breakeven_slippage` reports how little
   # adverse fill it takes to erase the edge. That number, not the ROI, is the

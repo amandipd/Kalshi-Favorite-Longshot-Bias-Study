@@ -1,10 +1,10 @@
-# ADR 005 - How calibration is bucketed, bounded and tested
+# Design decision doc 005 - How calibration is bucketed, bounded and tested
 
 **Status:** Proposed (Phase 3, 2026-09-01) -- awaiting ratification
 
 ## Context
 
-ADR 003 settled which number is the forecast; ADR 004 settled which rows carry
+Design decision doc 003 settled which number is the forecast; design decision doc 004 settled which rows carry
 it. This one settles how the 100,210 surviving contracts become a *claim*: how
 prices are grouped, what the interval around each group means, and what has to
 be true before a gap between price and outcome is called real.
@@ -20,7 +20,7 @@ of each other:
 1. **The buckets themselves.** Where the edges go decides what "a longshot"
    means, and edges chosen after seeing the data decide it in the data's
    favour.
-2. **Correlated observations inside a bucket.** ADR 004 measured this: 100,210
+2. **Correlated observations inside a bucket.** design decision doc 004 measured this: 100,210
    contracts come from 29,895 events, and siblings are logically bound rather
    than merely similar. A bucket of 22,993 contracts drawn from 10,280 events
    does not carry 22,993 observations' worth of information.
@@ -49,7 +49,7 @@ precision. Clustering is.
 
 **Note on the left-closed convention.** The exploratory table in the journal
 entry of 2026-08-29 used pandas' default right-closed bins, which put the
-1,124 contracts priced at exactly 0.10 in the *bottom* bucket. This ADR closes
+1,124 contracts priced at exactly 0.10 in the *bottom* bucket. This design decision doc closes
 the other way, so the bottom bucket falls from 24,117 to 22,993. Left-closed
 is the convention that matches how the bands are spoken about -- 10c is the
 start of the 10-20c band, not the end of the 0-10c one -- and it needs no
@@ -68,7 +68,7 @@ the extremes.
 
 **Wilson still assumes independent draws, which this dataset does not have.**
 It is computed only as the denominator of the design effect -- the factor by
-which pretending independence would have narrowed the interval. ADR 004
+which pretending independence would have narrowed the interval. Design decision doc 004
 decision 6 forbids reporting it as the interval, and `format_table` in
 `src/analysis/report.py` does not print it.
 
@@ -199,7 +199,7 @@ not a numerical convenience.
 ### 8. "Time to resolution" is replaced by market lifetime, because it does not vary
 
 The proposal calls for `bias_by_time_to_resolution`. That variable is constant
-in this dataset: ADR 003 prices every market at exactly one hour before close,
+in this dataset: design decision doc 003 prices every market at exactly one hour before close,
 so the gap between forecast and outcome is ~1 hour for all 100,210 rows by
 construction. There is nothing to segment, and a function with that name would
 be measuring settlement lag while claiming to measure forecast horizon.
@@ -247,7 +247,7 @@ Measured on the 100,210-contract processed table (`make analyze`,
 | resolution (discrimination) | 0.1258 |
 | uncertainty (base rate 0.4512) | 0.2476 |
 
-**Clustering cost what ADR 004 predicted it would, where it predicted it.**
+**Clustering cost what design decision doc 004 predicted it would, where it predicted it.**
 The design effect is ~1.03 through the middle buckets and rises in exactly the
 two tails: 1.45 in the 0-10c bucket and 1.20 in the 90c-100c bucket, the two
 buckets that hold the large mutually-exclusive fields. In the bottom bucket
@@ -280,7 +280,7 @@ from calibrated, which is what the hypothesis predicts.
   from one population). Cluster-robust SEs assume nothing about that
   distribution, which is the right trade when the clustering structure is
   known but its shape is not.
-- **Weighting each contract by 1/event size.** Rejected as primary in ADR 004
+- **Weighting each contract by 1/event size.** Rejected as primary in design decision doc 004
   because it silently changes the estimand from per-contract to per-event.
   Still worth reporting as a robustness check, and it is the natural
   companion to the clustered intervals rather than a replacement.

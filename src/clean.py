@@ -44,7 +44,7 @@ VENUE = "kalshi"
 BINARY_RESULTS = frozenset({"yes", "no"})
 
 # Every settled market the historical endpoints return is `finalized`. This is
-# asserted rather than filtered (ADR 004, decision 9): a row in another state
+# asserted rather than filtered (design decision doc 004, decision 9): a row in another state
 # means the ingestion layer picked up a market that has not resolved, which is
 # a bug that would quietly contaminate `outcome`, not a row to drop quietly.
 FINALIZED_STATUS = "finalized"
@@ -124,7 +124,7 @@ def compute_implied_price(
 
     Always the YES leg. Kalshi reports `yes_price_dollars` on every trade
     regardless of which side the taker took, so no flip is needed here;
-    NO-framing normalisation is a separate concern (ADR 004).
+    NO-framing normalisation is a separate concern (design decision doc 004).
 
     Methods, and the trade-off each makes:
 
@@ -292,7 +292,7 @@ def parse_raw_to_interim(
         if status != FINALIZED_STATUS:
             raise ValueError(
                 f"{ticker}: expected status={FINALIZED_STATUS!r}, got {status!r}. "
-                "An unsettled market has no trustworthy `result`; see ADR 004."
+                "An unsettled market has no trustworthy `result`; see design decision doc 004."
             )
 
         # Not a binary contract. `scalar` markets settle at fractional values
@@ -302,7 +302,7 @@ def parse_raw_to_interim(
             continue
 
         # Without it the row cannot be clustered, and an unclustered interval is
-        # wrong rather than merely wide (ADR 004, decision 6). Zero rows are
+        # wrong rather than merely wide (design decision doc 004, decision 6). Zero rows are
         # missing it today; this counts any that ever are instead of pooling
         # them under one empty key.
         event_ticker = market.get("event_ticker")
@@ -380,7 +380,7 @@ def interim_to_processed(
 
     Every exclusion here is a research decision from
     docs/adr/004-inclusion-criteria.md, not a data defect. Two filters do the
-    work -- the close-time window and a non-zero volume -- and the ADR's other
+    work -- the close-time window and a non-zero volume -- and the design decision doc's other
     decisions are deliberately *absent* filters: no volume floor, no
     de-duplication by event, no NO-framing flip. Each was considered and
     rejected because it would select on something downstream of the effect
@@ -409,7 +409,7 @@ def interim_to_processed(
         raise ValueError(
             f"{int(duplicates.sum())} duplicate ticker(s) in the interim layer, "
             f"e.g. {offenders}. De-duplication is an ingest-layer invariant; "
-            "see ADR 004, decision 8."
+            "see design decision doc 004, decision 8."
         )
 
     # Decision 6. A row with no event cannot be clustered, and an unclustered
@@ -417,7 +417,7 @@ def interim_to_processed(
     if (df["event_ticker"].fillna("") == "").any():
         raise ValueError(
             "interim rows are missing `event_ticker`, so they cannot be clustered. "
-            "See ADR 004, decision 6."
+            "See design decision doc 004, decision 6."
         )
 
     # Decision 2: the window is on close_time, the anchor the horizon price is

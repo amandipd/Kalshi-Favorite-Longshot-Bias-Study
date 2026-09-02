@@ -140,7 +140,7 @@ def lifetime_hours(df: pd.DataFrame) -> pd.Series:
 
     **Not** time-to-resolution, and the difference is the point. The proposal
     asked for bias by time-to-resolution, which does not vary in this dataset:
-    ADR 003 prices every market at exactly one hour before its close, so the
+    design decision doc 003 prices every market at exactly one hour before its close, so the
     gap between the forecast and the outcome is ~1 hour for all 100,210 rows
     by construction. There is nothing to segment.
 

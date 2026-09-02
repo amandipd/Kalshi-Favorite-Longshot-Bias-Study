@@ -391,7 +391,7 @@ def test_parquet_is_written_and_round_trips(tmp_path):
 
 def test_last_trade_method_needs_no_trades_directory(tmp_path):
     # The degenerate method must still run end to end -- the writeup plots its
-    # curve as the demonstration of why ADR 003 rejects it.
+    # curve as the demonstration of why design decision doc 003 rejects it.
     write_page(tmp_path / "raw", "Economics", "KXFED", [raw_market("A", last_price="0.9900")])
 
     df, log = run(tmp_path, make_config(tmp_path, method="last_trade"))
@@ -400,7 +400,7 @@ def test_last_trade_method_needs_no_trades_directory(tmp_path):
     assert log.reasons["horizon_not_ingested"] == 0
 
 
-# -- event structure and status (ADR 004) ----------------------------------
+# -- event structure and status (design decision doc 004) ------------------
 
 
 def test_event_ticker_is_carried_so_siblings_can_be_clustered(tmp_path):
@@ -454,7 +454,7 @@ def test_unfinalized_market_raises_rather_than_being_dropped(tmp_path):
     with pytest.raises(ValueError, match="finalized"):
         run(tmp_path)
 
-# -- interim -> processed (ADR 004) ----------------------------------------
+# -- interim -> processed (design decision doc 004) ------------------------
 
 
 def test_window_is_applied_to_close_time_and_both_bounds_are_inclusive(tmp_path):

@@ -177,7 +177,7 @@ def test_extra_tickers_are_clamped_rather_than_exceeding_100_percent(tmp_path):
 
 def test_categories_roll_up_with_their_own_exclusion_rates(tmp_path):
     """no_trade falling unevenly across categories is a bias, not a smaller
-    sample (ADR 003), so the dashboard reports it per category."""
+    sample (design decision doc 003), so the dashboard reports it per category."""
     raw, trades = tmp_path / "raw", tmp_path / "trades"
     write_page(raw, "Sports", "KXNBA", 1, [market("A"), market("B")])
     write_page(raw, "Crypto", "KXBTC", 1, [market("C"), market("D")])

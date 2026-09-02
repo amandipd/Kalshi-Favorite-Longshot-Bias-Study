@@ -35,13 +35,13 @@ Full numbers: **[docs/findings.md](docs/findings.md)**.
 `last_price` is 92.5% snapped to the final result — most Kalshi markets live
 about a day, so by close there's no uncertainty left to measure. Fix: price
 each contract from its last trade **one hour before close**, dropping the
-snapped rate to 1.1%. [ADR 003](docs/adr/003-implied-price-definition.md).
+snapped rate to 1.1%. [design decision doc 003](docs/adr/003-implied-price-definition.md).
 
 **Contracts aren't independent.** "Who wins the PGA Championship" is 250
 contracts, one per golfer, one winner — one result written 250 ways, not 250
 separate facts. Fix: group by event and do the statistics on events, which
 costs the most exactly where the bias lives.
-[ADR 005](docs/adr/005-bucketing-and-tests.md).
+[design decision doc 005](docs/adr/005-bucketing-and-tests.md).
 
 ## How it's measured
 

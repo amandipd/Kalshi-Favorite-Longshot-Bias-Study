@@ -1,4 +1,4 @@
-# ADR 001 - Three storage layers: raw, interim, processed
+# Design decision doc 001 - Three storage layers: raw, interim, processed
 
 **Status:** Accepted (Phase 1, 2026-08-09)
 
