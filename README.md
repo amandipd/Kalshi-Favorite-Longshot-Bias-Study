@@ -15,10 +15,23 @@ low-probability ones.
 
 ![calibration curve](reports/figures/01_reliability_diagram.png)
 
-**The prices are good.** Brier score 0.1213 — a single number, from 0 (perfect)
-to 1 (worst possible), that scores a set of probability forecasts against what
-actually happened — and almost none of that error is miscalibration: when
-Kalshi says 30%, it happens about 30% of the time.
+**The prices are good.** Brier score **0.1213** — the mean squared error
+between each forecast (a probability, e.g. 0.30) and what actually happened
+(1 if it did, 0 if it didn't); 0 is a perfect forecaster, 1 is the worst
+possible one. Splitting that score with the **Murphy decomposition**
+(`Brier = reliability − resolution + uncertainty`) shows almost none of it is
+error the market could fix:
+
+- **Reliability** (calibration error — how far stated probabilities drift from
+  true frequencies) is **0.00029**, next to nothing.
+- **Resolution** (how much the forecasts vary from a flat guess, i.e. the
+  market's ability to actually tell likely outcomes from unlikely ones) is
+  **0.1258** — most of the score, and a *good* thing: a forecaster who always
+  answers with the base rate is perfectly calibrated and completely useless.
+- **Uncertainty** (the base rate's own randomness — 45.12% of contracts settle
+  YES — a floor no forecaster can beat) is **0.2476**.
+
+In plain terms: when Kalshi says 30%, it happens about 30% of the time.
 
 **But there's a small favorite-longshot bias, in the direction theory
 predicts.** Contracts below 50¢ happen *less* often than their price claims;
@@ -48,9 +61,13 @@ costs the most exactly where the bias lives.
 
 ## How it's measured
 
-Ten price buckets, Brier score split into its three parts (Murphy
-decomposition), error bars that account for event grouping, and a correction
-for testing ten buckets at once. Method: **[docs/methodology.md](docs/methodology.md)**.
+Ten price buckets, the Brier score split via Murphy decomposition into
+reliability, resolution, and uncertainty (see above), error bars that account
+for event grouping (clustered standard errors, since 250 golfers in one
+tournament are 250 correlated outcomes, not 250 independent ones), and a
+Benjamini–Hochberg correction for testing all ten buckets at once (so one
+lucky bucket out of ten can't masquerade as a real finding). Method:
+**[docs/methodology.md](docs/methodology.md)**.
 Reasoning behind each choice: [docs/adr/](docs/adr/) (backtest design in
 [006](docs/adr/006-train-test-split.md)/[007](docs/adr/007-strategy-and-sizing.md)).
 Day-to-day log: [docs/journal.md](docs/journal.md).
