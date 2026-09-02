@@ -5,21 +5,28 @@ contract trades at 30¢, the market is claiming a 30% chance. This checks
 whether that claim holds — gather every contract that traded near 30¢, and see
 how many actually happened.
 
+This is a test for the **favorite-longshot bias**: a well-documented pattern,
+first found at racetracks, where cheap "longshot" bets pay off even less often
+than their price implies, while expensive "favorite" bets pay off *more* often
+than theirs implies — bettors collectively overpay for a shot at a big payout
+and underpay for a near-sure thing.
+
 ---
 
 ## What we found
 
 ![calibration curve](reports/figures/01_reliability_diagram.png)
 
-**The prices are good.** Brier score 0.1213, and almost none of that error is
-miscalibration — when Kalshi says 30%, it happens about 30% of the time.
+**The prices are good.** Brier score 0.1213 — a single number, from 0 (perfect)
+to 1 (worst possible), that scores a set of probability forecasts against what
+actually happened — and almost none of that error is miscalibration: when
+Kalshi says 30%, it happens about 30% of the time.
 
-**But there's a small bias, in the direction theory predicts.** Contracts
-below 50¢ happen *less* often than their price claims; above 50¢, *more*
-often. Cheap contracts are slightly overpriced, expensive ones slightly
-underpriced — the favorite-longshot bias, the same pattern found at
-racetracks. Peak gap: **2.98¢**, in the 30–40¢ range. 8 of 10 buckets are big
-enough to rule out luck.
+**But there's a small favorite-longshot bias, in the direction theory
+predicts.** Contracts below 50¢ happen *less* often than their price claims;
+above 50¢, *more* often — cheap contracts are slightly overpriced, expensive
+ones slightly underpriced. Peak gap: **2.98¢**, in the 30–40¢ range. 8 of 10
+buckets are big enough to rule out luck.
 
 It's biggest in short-lived markets (open under 15.6h: off by up to 5.5¢) and
 may be much bigger outside sports (Economics: a 13.7¢ gap, but on only 186
