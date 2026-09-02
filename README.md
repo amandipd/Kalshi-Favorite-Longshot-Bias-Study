@@ -5,8 +5,6 @@ contract trades at 30¢, the market is claiming a 30% chance. This checks
 whether that claim holds — gather every contract that traded near 30¢, and see
 how many actually happened.
 
-**100,210 settled Kalshi contracts**, Dec 2025 – Jun 2026. *All 4 phases done.*
-
 ---
 
 ## What we found
