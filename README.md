@@ -5,11 +5,9 @@ contract trades at 30¢, the market is claiming a 30% chance. This checks
 whether that claim holds — gather every contract that traded near 30¢, and see
 how many actually happened.
 
-This is a test for the **favorite-longshot bias**: a well-documented pattern,
-first found at racetracks, where cheap "longshot" bets pay off even less often
-than their price implies, while expensive "favorite" bets pay off *more* often
-than theirs implies — bettors collectively overpay for a shot at a big payout
-and underpay for a near-sure thing.
+This is a test for the **favorite-longshot bias**, a pattern first noticed at
+racetracks: people underpay for high-probability events and overpay for
+low-probability ones.
 
 ---
 
