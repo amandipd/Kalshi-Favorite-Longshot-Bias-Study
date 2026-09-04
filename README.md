@@ -33,21 +33,30 @@ is overpriced, every band from 50¢ to 90¢ is underpriced — the sign flips cl
 at the 50¢ coin-flip point — and the 90–100¢ band unexpectedly flips back to
 overpriced (see "Heavy favorites at 90¢+" below).
 
+### Brier score decomposition
+
 **The prices are good.** Brier score **0.1213** — the mean squared error
 between each forecast (a probability, e.g. 0.30) and what actually happened
 (1 if it did, 0 if it didn't); 0 is a perfect forecaster, 1 is the worst
-possible one. Splitting that score with the **Murphy decomposition**
-(`Brier = reliability − resolution + uncertainty`) shows almost none of it is
-error the market could fix:
+possible one. On its own that number says little, because a market can score
+badly for two opposite reasons: it lies about probabilities, or it faces
+genuinely coin-flip questions. The **Murphy decomposition** splits the score
+into exactly those pieces:
 
-- **Reliability** (calibration error — how far stated probabilities drift from
-  true frequencies) is **0.00029**, next to nothing.
-- **Resolution** (how much the forecasts vary from a flat guess, i.e. the
-  market's ability to actually tell likely outcomes from unlikely ones) is
-  **0.1258** — most of the score, and a *good* thing: a forecaster who always
-  answers with the base rate is perfectly calibrated and completely useless.
-- **Uncertainty** (the base rate's own randomness — 45.12% of contracts settle
-  YES — a floor no forecaster can beat) is **0.2476**.
+| term | plain meaning | value | direction |
+|---|---|---|---|
+| **uncertainty** | how random the questions were to begin with — the variance of the base rate, 45.12% of contracts settle YES. A floor no forecaster can get under. | **0.2476** | fixed by the questions |
+| − **resolution** | how far the market's prices move away from that flat base-rate guess — its ability to tell likely outcomes from unlikely ones. Subtracted, so **more is better**. | **0.1258** | earned |
+| + **reliability** | calibration error — how far a price drifts from the frequency it actually happens at. This is the only part the market is getting *wrong*. | **0.00029** | the mistake |
+| + binning residual | rounding from sorting prices into ten buckets rather than measuring each price exactly — 0.6% of the score, so the buckets aren't distorting anything. | **−0.00075** | artefact |
+| **= Brier score** | | **0.1213** | |
+
+Read down that column: almost the entire score is the questions' own randomness
+(0.2476) minus real forecasting skill (0.1258). The part the market could
+actually fix — reliability, at three ten-thousandths — is a rounding error next
+to both. And note that resolution being large is a *good* thing: a forecaster
+who answers every question with the base rate is perfectly calibrated and
+completely useless.
 
 In plain terms: when Kalshi says 30%, it happens about 30% of the time.
 
